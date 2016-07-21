@@ -982,7 +982,7 @@ SEARCHFORM
             $html
                 .= sprintf(
                 "<p>Showing results from searching for '%s' %s '%s'",
-                encode_entities(params->{'q'}), params->{searchtype} =~ /^n/ ? "in" : "not in", encode_entities(params->{searchfield}));
+                encode_entities(params->{'q'}), (params->{searchtype} =~ /^n/) ? "not in" : "in", encode_entities(params->{searchfield}));
             $html .= sprintf '&mdash;<a href="%s">Reset search</a></p>',
                 _external_url($args->{dancer_prefix}, $args->{prefix});
         }
