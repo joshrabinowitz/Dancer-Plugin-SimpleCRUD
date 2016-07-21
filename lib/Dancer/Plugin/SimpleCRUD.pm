@@ -37,7 +37,7 @@ use HTML::Table::FromDatabase;
 use CGI::FormBuilder;
 use HTML::Entities;
 
-our $VERSION = '0.95';
+our $VERSION = '0.96';
 
 =encoding utf8
 
@@ -846,13 +846,15 @@ sub _create_list_handler {
 
     my $order_by_param     = params->{'o'} || "";
     my $order_by_direction = params->{'d'} || "";
+    my $q                   = params->{'q'} || "";
     my $html               = <<"SEARCHFORM";
  <p><form name="searchform" method="get">
      Field:  <select name="searchfield">$options</select> &nbsp;&nbsp;
      <select name="searchtype">
      <option value="c">Contains</option><option value="e">Equals</option>
+     <option value="nc">Does Not Contain</option><option value="ne">Does Not Equal</option>
      </select>&nbsp;&nbsp;
-     <input name="q" id="searchquery" type="text" size="30"/> &nbsp;&nbsp;
+     <input name="q" id="searchquery" type="text" size="30" value="$q" /> &nbsp;&nbsp;
      <input name="o" type="hidden" value="$order_by_param"/>
      <input name="d" type="hidden" value="$order_by_direction"/>
      <input name="searchsubmit" type="submit" value="Search"/>
@@ -965,20 +967,22 @@ SEARCHFORM
 
         if ($column_data) {
             my $search_value = params->{'q'};
-            if (params->{searchtype} eq 'c') {
+            if (params->{searchtype} eq 'c' || params->{searchtype} eq 'nc') {
                 $search_value = '%' . $search_value . '%';
             }
 
             $query
                 .= " WHERE $table_name."
                 . $dbh->quote_identifier(params->{searchfield})
-                . (params->{searchtype} eq 'c' ? 'LIKE' : '=')
+                . (params->{searchtype} eq 'c' ? 'LIKE' :
+                   params->{searchtype} eq 'nc' ? 'NOT LIKE' :
+                   params->{searchtype} eq 'ne' ? '!=' : '=')
                 . $dbh->quote($search_value);
 
             $html
                 .= sprintf(
-                "<p>Showing results from searching for '%s' in '%s'",
-                encode_entities(params->{'q'}), encode_entities(params->{searchfield}));
+                "<p>Showing results from searching for '%s' %s '%s'",
+                encode_entities(params->{'q'}), params->{searchtype} =~ /^n/ ? "in" : "not in", encode_entities(params->{searchfield}));
             $html .= sprintf '&mdash;<a href="%s">Reset search</a></p>',
                 _external_url($args->{dancer_prefix}, $args->{prefix});
         }
