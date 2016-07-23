@@ -36,6 +36,7 @@ use Dancer::Plugin::Database;
 use HTML::Table::FromDatabase;
 use CGI::FormBuilder;
 use HTML::Entities;
+use URI::Escape;
 
 our $VERSION = '0.96';
 
@@ -883,6 +884,7 @@ sub _create_list_handler {
     my $order_by_param     = params->{'o'} || "";
     my $order_by_direction = params->{'d'} || "";
     my $q                   = params->{'q'} || "";
+    my $display_q           = encode_entities( $q );
     my $html               = <<"SEARCHFORM";
  <p><form name="searchform" method="get">
      Field:  <select name="searchfield">$options</select> &nbsp;&nbsp;
@@ -890,7 +892,7 @@ sub _create_list_handler {
      <option value="c">Contains</option><option value="e">Equals</option>
      <option value="nc">Does Not Contain</option><option value="ne">Does Not Equal</option>
      </select>&nbsp;&nbsp;
-     <input name="q" id="searchquery" type="text" size="30" value="$q" /> &nbsp;&nbsp;
+     <input name="q" id="searchquery" type="text" size="30" value="$display_q" /> &nbsp;&nbsp;
      <input name="o" type="hidden" value="$order_by_param"/>
      <input name="d" type="hidden" value="$order_by_direction"/>
      <input name="searchsubmit" type="submit" value="Search"/>
@@ -1015,22 +1017,23 @@ SEARCHFORM
                    params->{searchtype} eq 'ne' ? '!=' : '=')
                 . $dbh->quote($search_value);
 
+            my $matchtype = params->{searchtype} =~ /e$/ ? "equals" : "in";
             $html
                 .= sprintf(
                 "<p>Showing results from searching for '%s' %s '%s'",
-                encode_entities(params->{'q'}), (params->{searchtype} =~ /^n/) ? "not in" : "in", encode_entities(params->{searchfield}));
+                encode_entities(params->{'q'}), (params->{searchtype} =~ /^n/) ? "not $matchtype" : $matchtype, encode_entities(params->{searchfield}));
             $html .= sprintf '&mdash;<a href="%s">Reset search</a></p>',
                 _external_url($args->{dancer_prefix}, $args->{prefix});
         }
     }
 
     if ($args->{downloadable}) {
-        my $q    = params->{'q'}         || "";
-        my $sf   = params->{searchfield} || "";
-        my $st   = params->{searchtype} || "";
-        my $o    = params->{'o'}         || "";
-        my $d    = params->{'d'}         || "";
-        my $page = params->{'p'}         || 0;
+        my $q    = uri_escape(params->{'q'}         || "");
+        my $sf   = uri_escape(params->{searchfield} || "");
+        my $st   = uri_escape(params->{searchtype} || "");
+        my $o    = uri_escape(params->{'o'}         || "");
+        my $d    = uri_escape(params->{'d'}         || "");
+        my $page = uri_escape(params->{'p'}         || 0);
 
         my @formats = qw/csv tabular json xml/;
 
@@ -1047,10 +1050,10 @@ SEARCHFORM
     ## (will be used with HTML::Table::FromDatabase's "-rename_columns" parameter.
     my %columns_sort_options;
     if ($args->{sortable}) {
-        my $q               = params->{'q'}         || "";
-        my $sf              = params->{searchfield} || "";
-        my $st              = params->{searchtype} || "";
-        my $order_by_column = params->{'o'}         || $key_column;
+        my $q               = uri_escape(params->{'q'}         || "");
+        my $sf              = uri_escape(params->{searchfield} || "");
+        my $st              = uri_escape(params->{searchtype} || "");
+        my $order_by_column = uri_escape(params->{'o'})        || $key_column;
 
         # Invalid column name ? discard it
         my $valid = grep { $_->{COLUMN_NAME} eq $order_by_column } @$columns;
@@ -1093,12 +1096,12 @@ SEARCHFORM
     if ($args->{paginate} && $args->{paginate} =~ /^\d+$/) {
         my $page_size = $args->{paginate};
 
-        my $q    = params->{'q'}         || "";
-        my $sf   = params->{searchfield} || "";
-        my $st   = params->{searchtype} || "";
-        my $o    = params->{'o'}         || "";
-        my $d    = params->{'d'}         || "";
-        my $page = params->{'p'}         || 0;
+        my $q    = uri_escape(params->{'q'}         || "");
+        my $sf   = uri_escape(params->{searchfield} || "");
+        my $st   = uri_escape(params->{searchtype} || "");
+        my $o    = uri_escape(params->{'o'}         || "");
+        my $d    = uri_escape(params->{'d'}         || "");
+        my $page = uri_escape(params->{'p'}         || 0);
         $page = 0 unless $page =~ /^\d+$/;
 
         my $offset = $page_size * $page;
