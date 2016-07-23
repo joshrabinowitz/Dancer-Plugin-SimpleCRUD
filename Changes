@@ -1,5 +1,13 @@
 Revision history for Dancer-Plugin-SimpleCRUD 
 
+0.97    2016-07-23
+        [ENHANCEMENTS]
+        - Allow for searching on non-alphanumerics
+        - Add support for Does Not Contain / Does Not Equal searches
+        - Show query in search box in search results
+        [BUG FIXES]
+        - More careful about url/html injections
+
 0.96    2016-07-22
         [ BUG FIXES ]
         - Fix uninitialized value errors when re-sorting and downloading
