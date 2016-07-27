@@ -15,6 +15,7 @@ config->{plugins}{Database}{database} = $filename;
 use_ok( 'TestCRUD' ) || die "Can't load test module TestCRUD";
 
 route_exists [ GET => '/test_table' ];
+response_status_isnt [GET => '/test_table'], 404, "response for GET /test_table is not a 404";
 
 done_testing();
 
