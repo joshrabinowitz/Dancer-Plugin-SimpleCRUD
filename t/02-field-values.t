@@ -28,6 +28,9 @@ my @csv_contents = (
 #}
 require 'TestCRUDFields.pm'; #' ) || die "Can't load test module TestCRUDFields";
 
+## SEE http://www.codeproject.com/Tips/634815/Integrating-Perl-REST-service-with-jQuery-and-a-da
+# which describes how to set up Dancer and DBD::CSV / DBI::CSV
+
 route_exists [ GET => '/test_table' ];
 response_status_isnt [GET => '/test_table'], 404, "response for GET /test_table is not a 404";
 
