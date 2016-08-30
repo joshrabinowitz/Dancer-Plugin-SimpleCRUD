@@ -1,19 +1,79 @@
 package t::lib::TestApp;
 
 use Dancer;
-
-
+use Dancer::Plugin::Database;
 
 set session => 'simple';
-set plugins => { 'SimpleCRUD' => { provider => 'Example' } };
+set plugins => { 'SimpleCRUD' => { provider => 'Config' } };
 
 use Dancer::Plugin::SimpleCRUD;
 no warnings 'uninitialized';
 
 
-get '/' => sub {
-    "Index always accessible";
+hook database_connected => sub {
+    my $dbh = shift;
+    var(connecthookfired => $dbh);
 };
+
+get '/connecthookfired' => sub {
+    my $database = database();
+    # If the hook fired, it'll have squirreled away a reference to the DB handle
+    # for us to look for.
+    my $h = var('connecthookfired');
+    if (ref $h && $h->isa('DBI::db')) {
+        return 1;
+    } else {
+        return 0;
+    }
+};
+
+my $last_db_error;
+hook 'database_error' => sub {
+    $last_db_error = $_[0];
+};
+
+get '/errorhookfired' => sub {
+    database->do('something silly');
+    return $last_db_error ? 1 : 0;
+};
+
+
+get '/prepare_db' => sub {
+
+    my @sql = (
+        q/create table users (id INTEGER, name VARCHAR, category VARCHAR)/,
+        q/insert into users values (1, 'sukria', 'admin')/,
+        q/insert into users values (2, 'bigpresh', 'admin')/,
+        q/insert into users values (3, 'badger', 'animal')/,
+        q/insert into users values (4, 'bodger', 'man')/,
+        q/insert into users values (5, 'mousey', 'animal')/,
+        q/insert into users values (6, 'mystery2', null)/,
+        q/insert into users values (7, 'mystery1', null)/,
+    );
+
+    database->do($_) for @sql;
+    'ok';
+};
+
+get '/' => sub {
+    my $sth = database->prepare('select count(*) from users');
+    $sth->execute;
+    my $total_users = $sth->fetch();
+    $total_users->[0] == 7 ? "ok" : "not ok";
+};
+
+# Simple example:
+if (0) {
+    simple_crud(
+       record_title => 'Users',
+       prefix => '/users',
+       db_table => 'user',
+       editable => 1,
+    );
+}
+ 
+1;
+
 __END__
 
 get '/loggedin' => require_login sub  {
