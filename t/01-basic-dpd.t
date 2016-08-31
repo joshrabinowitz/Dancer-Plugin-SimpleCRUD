@@ -1,6 +1,8 @@
 use strict;
 use warnings;
 
+# THIS IS VERBATIM FROM DBD
+
 use Test::More import => ['!pass'];
 use t::lib::TestApp;
 use Dancer ':syntax';

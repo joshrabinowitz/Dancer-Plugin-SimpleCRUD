@@ -1,5 +1,6 @@
 package t::lib::TestApp;
 
+# verbatim from dpd, except lines at very end
 use Dancer;
 use Dancer::Plugin::Database;
 use Test::More; # for use_ok
