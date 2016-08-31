@@ -63,7 +63,7 @@ get '/' => sub {
 };
 
 # Simple example:
-if (0) {
+if (1) {
     simple_crud(
        record_title => 'Users',
        prefix => '/users',
