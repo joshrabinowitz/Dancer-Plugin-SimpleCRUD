@@ -2,7 +2,10 @@ package t::lib::TestApp;
 
 use Dancer;
 use Dancer::Plugin::Database;
+use Test::More; # for use_ok
+
 no warnings 'uninitialized';
+
 
 hook database_connected => sub {
     my $dbh = shift;
@@ -236,4 +239,15 @@ get '/isa/:class' => sub {
     return database->isa(params->{class}) ? 1 : 0;
 };
 
+BEGIN {
+    use_ok( 'Dancer::Plugin::SimpleCRUD' ) || print "Bail out!
+";
+}
+# At the very end, add  simple_crud test
+simple_crud(
+    record_title => 'Users',
+    prefix => '/users',
+    db_table => 'user',
+    editable => 1,
+);
 1;
