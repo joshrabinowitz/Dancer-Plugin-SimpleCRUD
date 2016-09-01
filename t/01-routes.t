@@ -8,13 +8,19 @@ use File::Temp;
 
 use FindBin qw($Bin);
 use lib "$Bin/lib";	#
-my $filename = File::Temp->new(UNLINK=>1);    # will be automatically unlinked. Set to 0 to keep.
+my $tmpfilename = File::Temp->new(UNLINK=>0);
+
+ok($tmpfilename, "tmpfilename is $tmpfilename");
 
 config->{plugins}{Database}{driver} = "CSV";
-config->{plugins}{Database}{database} = $filename;
-use_ok( 'TestCRUD' ) || die "Can't load test module TestCRUD";
+config->{plugins}{Database}{database} = $tmpfilename;
+
+require_ok( 'TestCRUD' ) || die "Can't load test module TestCRUD";
 
 route_exists [ GET => '/test_table' ];
+response_status_is [ GET => '/test_table' ], 200, 'GET /test_table is found';
+
+unlink($tmpfilename);
 
 done_testing();
 
