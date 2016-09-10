@@ -770,10 +770,14 @@ sub _create_add_edit_route {
         ? Dancer::Plugin::SimpleCRUD::ParamsObject->new({ params() })
         : undef;
 
+    my $form_values = $values_from_database || { params() };
+    use Data::Dumper qw(Dumper);
+    warn Dumper( {params{}} );
+    warn Dumper($form_values);
     my $form = CGI::FormBuilder->new(
         fields   => \@editable_columns,
         params   => $paramsobj,
-        values   => $values_from_database,
+        values   => $form_values,
         validate => $validation,
         method   => 'post',
         action   => _external_url(
