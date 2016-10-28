@@ -24,6 +24,7 @@ my @sql = (
     qq/insert into users values (5, 'mousey', '$password')/,
     qq/insert into users values (6, 'mystery2', '$password')/,
     qq/insert into users values (7, 'mystery1', '$password')/,
+
 );
 
 database->do($_) for @sql;
@@ -39,5 +40,10 @@ simple_crud( prefix => '/users_custom_columns', record_title=>'A', db_table => '
 # override display of 'username' column
 simple_crud( prefix => '/users_customized_column', record_title=>'A', db_table => 'users', editable => 0, sortable=>1,
                 custom_columns => [ { name => "username", raw_column=>"username", transform => sub { "Username: $_[0]" } } ] );
+
+# one foreign key
+simple_crud( prefix => '/users_with_foreign_key',   record_title=>'A', db_table => 'users', editable => 0, 
+    foreign_keys => { id => { table=>"user_extras3", key_column=>"user_id", label_column=>"extra3" }, }
+);
 
 1;

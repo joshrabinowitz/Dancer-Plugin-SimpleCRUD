@@ -46,6 +46,7 @@ sub main {
     response_status_is [ GET => '/users/view/1' ],                          200, "GET /users/view/1 returns 200";
     response_status_is [ GET => '/users_editable/view/1' ],                 200, "GET /users_editable/view/1 returns 200";
     response_status_is [ GET => '/users?searchfield=id&searchtype=e&q=1' ], 200, "GET {search on id=1} returns 200";
+    response_status_is [ GET => '/users_foreign_key' ],                      200, "GET /users_foreign_key returns 200";
 
 
     # test html returned from GET $prefix on three cruds
@@ -55,6 +56,7 @@ sub main {
     my ($users_custom_columns_response, $users_custom_columns_tree) = crud_fetch_to_htmltree( GET => '/users_custom_columns',  200 );
     my ($users_customized_column_response, $users_customized_column_tree) = crud_fetch_to_htmltree( GET => '/users_customized_column',  200 );
     my ($users_search_response,         $users_search_tree)         = crud_fetch_to_htmltree( GET => '/users?q=2',             200 );
+    my ($users_foreign_key_response,    $users_foreign_key_tree)     = crud_fetch_to_htmltree( GET => '/users_with_foreign_key',           200 ); # foreign key
 
     ###############################################################################
     # test suggestions from bigpresh:
@@ -98,7 +100,10 @@ sub main {
 
     # 6) sorting works
     # TODO
-    
+   
+    # 7) foreign keys work
+    test_htmltree_contents( $users_foreign_key_tree, [qw( tbody:0 tr:0 )], ["1", "sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK", "extra3 data",  ], "table content, with foreign key" );
+
     done_testing();
 }
 
