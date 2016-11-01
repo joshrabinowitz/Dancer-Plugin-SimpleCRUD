@@ -124,8 +124,8 @@ connection.
                 label_column => 'name',
             },
         },
-	table_class => 'table table-bordered',
-	paginate_table_class => 'table table-borderless',
+        table_class => 'table table-bordered',
+        paginate_table_class => 'table table-borderless',
         custom_columns => [
             {
                 name => "division_news",
@@ -699,6 +699,7 @@ sub _create_view_handler {
 
 register simple_crud => \&simple_crud;
 register_hook(qw(
+    view_rows_pre_display
     add_edit_row
     add_edit_row_pre_save
     add_edit_row_post_save
@@ -1323,7 +1324,7 @@ SEARCHFORM
         my $url = _external_url($args->{dancer_prefix}, $args->{prefix})
             . "?o=$o&d=$d&q=$qt&searchfield=$sf&searchtype=$st";
         $html .= "<p>";
-	$html .= "<table class=\"$paginate_table_class\"><tr>";
+        $html .= "<table class=\"$paginate_table_class\"><tr>";
 
         if ($page > 0) {
             $html
@@ -1367,6 +1368,16 @@ SEARCHFORM
         };
     }
 
+    my $meta_for_hook = {
+        args => $args,
+        params => \%params,
+        table_name => $table_name,
+        key_column => $key_column,
+        keys => [ ],
+    };
+    # Fire a hook so the user can manipulate the data in a whole range of
+    # cunning ways, if they wish
+    execute_hook('view_rows_pre_display', $meta_for_hook);
 
     my $table = HTML::Table::FromDatabase->new(
         -sth       => $sth,
@@ -1385,7 +1396,7 @@ SEARCHFORM
                             );
                         $action_links
                             .= qq[<a href="$edit_url" class="edit_link">Edit</a>];
-                        if ($args->{deletable} && _has_permission('edit', $args)) {
+                        if ($args->{deletable}) {
                             my $del_url =_external_url(
                                 $args->{dancer_prefix}, $args->{prefix},
                                 "/delete/$id"
