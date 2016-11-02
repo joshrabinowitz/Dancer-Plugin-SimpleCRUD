@@ -33,22 +33,14 @@ my $conf = {
 set plugins => $conf;
 set logger => 'capture';
 set log => 'debug';
+my $trap = Dancer::Logger::Capture->trap;
 
 
 main();
 
 sub main {
-    # test basic routes return 200 codes
-    response_status_is [ GET => '/users' ],                                 200, "GET /users returns 200";
-    response_status_is [ GET => '/users/add' ],                             404, "GET /users/add returns 404";
-    response_status_is [ GET => '/users_editable/add' ],                    200, "GET /users_editable/add returns 200";
-    response_status_is [ GET => '/users_editable/edit/1' ],                 200, "GET /users_editable/edit/1 returns 200";
-    response_status_is [ GET => '/users/view/1' ],                          200, "GET /users/view/1 returns 200";
-    response_status_is [ GET => '/users_editable/view/1' ],                 200, "GET /users_editable/view/1 returns 200";
-    response_status_is [ GET => '/users?searchfield=id&searchtype=e&q=1' ], 200, "GET {search on id=1} returns 200";
 
-
-    # test html returned from GET $prefix on three cruds
+    # each tests status code, and returns $response and tree of html 
     my ($users_response,                $users_tree)                = crud_fetch_to_htmltree( GET => '/users',                 200 );
     my ($users_editable_response,       $users_editable_tree)       = crud_fetch_to_htmltree( GET => '/users_editable',        200 );
     my ($users_editable_not_addable_response, $users_editable_not_addable_tree)       = crud_fetch_to_htmltree( GET => '/users_editable_not_addable',        200 );
@@ -91,7 +83,8 @@ sub main {
     test_htmltree_contents( $users_customized_column_tree, [qw( tbody:0 tr:0 )], ["1", "Username: sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK", ], "table content, customized column" );
 
     # 4) add/edit/delete routes work (To Be Written)
-    # TODO
+    my $response = dancer_response( GET=>"/users_editable/delete/1" );
+    cmp_ok( $response->status, "==", 200, "delete route returns 200"  );
 
     # 5) searching works
     test_htmltree_contents( $users_search_tree,         [qw( tbody:0 tr:0 )], ["2", "bigpresh", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"  ],               "table content, search q=2" );
@@ -99,6 +92,19 @@ sub main {
     # 6) sorting works
     # TODO
     
+
+    my $traps = $trap->read();
+    #for my $error (@$traps) {
+    #    diag( "trapped $error->{level}: $error->{message}" );
+    #}
+
+    # show captured errors
+    my @errors = grep { $_->{level} eq "error" } @$traps;
+    ok( @errors == 0, "no errors" );
+    for my $error (@errors) {
+        diag( "trapped $error->{level}: $error->{message}" );
+    }
+
     done_testing();
 }
 

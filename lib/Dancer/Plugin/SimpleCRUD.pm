@@ -617,6 +617,8 @@ Do you really wish to delete this record?
 <input type="button" value="Cancel" onclick="history.back();">
 <input type="submit" value="Delete record">
 </form>
+
+                EXTRA TABLE HERE
 CONFIRMDELETE
 
         };
