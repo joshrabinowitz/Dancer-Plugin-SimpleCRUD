@@ -42,8 +42,11 @@ sub main {
     # test basic routes return 200 codes
     response_status_is [ GET => '/users' ],                                 200, "GET /users returns 200";
     response_status_is [ GET => '/users/add' ],                             404, "GET /users/add returns 404";
+    response_status_is [ GET => '/users/delete/1' ],                        404, "GET /users/delete/1 returns 404";
     response_status_is [ GET => '/users_editable/add' ],                    200, "GET /users_editable/add returns 200";
     response_status_is [ GET => '/users_editable/edit/1' ],                 200, "GET /users_editable/edit/1 returns 200";
+    response_status_is [ GET => '/users_editable/delete/1' ],               404, "GET /users_editable/delete/1 returns 404";
+    response_status_is [ GET => '/users_editable_and_deletable/delete/1' ], 200, "GET /users_editable_and_deletable/delete/1 returns 200";
     response_status_is [ GET => '/users/view/1' ],                          200, "GET /users/view/1 returns 200";
     response_status_is [ GET => '/users_editable/view/1' ],                 200, "GET /users_editable/view/1 returns 200";
     response_status_is [ GET => '/users?searchfield=id&searchtype=e&q=1' ], 200, "GET {search on id=1} returns 200";
@@ -98,8 +101,13 @@ sub main {
     $response = dancer_response( GET => "/users_customized_column" );
     cmp_ok( $response->{content}, '=~', q{<td class="classhere">Username: sukria</td>}, "column_class from in /users_customized_column html" );
 
-    # 4) add/edit/delete routes work (To Be Written)
-    # TODO
+    # 4) add/edit/delete routes work. We do basic 'response_status_is' tests above.
+    # /users/edit/1             - should fail because /users is not editable
+    # /users/edit_editable/1    - should succeed
+
+    # 4A) test that a working ../delete/1 route asks for confirmation
+    $response = dancer_response( GET => "/users_editable_and_deletable/delete/1" );
+    cmp_ok( $response->{content}, '=~', q{Do you really wish to delete this record}, "deletion confirmation" );
 
     # 5) searching works
     test_htmltree_contents( $users_search_tree,         [qw( tbody:0 tr:0 )], ["2", "bigpresh", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"  ],               "table content, search q=2" );
