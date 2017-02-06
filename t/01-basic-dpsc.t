@@ -107,7 +107,7 @@ sub main {
 
     # 4A) test that a working ../delete/1 route asks for confirmation
     $response = dancer_response( GET => "/users_editable_and_deletable/delete/1" );
-    cmp_ok( $response->{content}, '=~', q{Do you really wish to delete this record}, "deletion confirmation" );
+    cmp_ok( $response->{content}, '=~', q{Do you really wish to delete}, "deletion confirmation" );
 
     # 5) searching works
     test_htmltree_contents( $users_search_tree,         [qw( tbody:0 tr:0 )], ["2", "bigpresh", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"  ],               "table content, search q=2" );

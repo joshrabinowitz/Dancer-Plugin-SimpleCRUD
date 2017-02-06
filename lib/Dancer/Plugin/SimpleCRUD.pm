@@ -608,22 +608,23 @@ sub simple_crud {
         # A route for GET requests, to present a "Do you want to delete this"
         # message with a form to submit (this is only for browsers which didn't
         # support Javascript, otherwise the list page will have POSTed the ID
-        # to us) (or they just came here directly for some reason)
+        # to us) (or they just came here directly to make the user confirm)
+        my $get_delete_handler =sub {
+            my $content = q{
+                <p>
+                Do you really wish to delete "} . encode_entities($args{record_title}) . q{" record at row id } . encode_entities(params->{id}) . q{?
+                </p>
+
+                <form method="post">
+                <input type="button" value="Cancel" onclick="history.back();">
+                <input type="submit" value="Delete record">
+                </form>
+            };
+            return _apply_template($content, $args{'template'}, $args{'record_title'});
+        };
         get _construct_url(
             $args{dancer_prefix}, $args{prefix}, "/delete/:id"
-            ) => sub {
-            return _apply_template(<<CONFIRMDELETE, $args{'template'}, $args{'record_title'});
-<p>
-Do you really wish to delete this record?
-</p>
-
-<form method="post">
-<input type="button" value="Cancel" onclick="history.back();">
-<input type="submit" value="Delete record">
-</form>
-CONFIRMDELETE
-
-        };
+            ) => $get_delete_handler;
 
         # A route for POST requests, to actually delete the record
         my $del_url_stub = _construct_url(
