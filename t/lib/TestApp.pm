@@ -37,14 +37,20 @@ simple_crud( prefix => '/users'  ,              record_title=>'A', db_table => '
 simple_crud( prefix => '/users_editable',       record_title=>'A', db_table => 'users', editable => 1, );
 simple_crud( prefix => '/users_editable_not_addable',       
                                                 record_title=>'A', db_table => 'users', editable => 1, addable => 0);
+
+# this error is sensitive to ordering
 simple_crud( prefix => '/users_custom_columns', record_title=>'A', db_table => 'users', editable => 0, custom_columns => [ $extra_custom_column, $id_custom_column ] );
+#simple_crud( prefix => '/users_custom_columns', record_title=>'A', db_table => 'users', editable => 0, custom_columns => [ $id_custom_column, $extra_custom_column, ] );
 
 # override display of 'username' column
 simple_crud( prefix => '/users_customized_column', record_title=>'A', db_table => 'users', editable => 0, sortable=>1,
+                custom_columns => [ $username_custom_column, ], # NO WARNING
+            );
+simple_crud( prefix => '/users_customized_column2', record_title=>'A', db_table => 'users', editable => 0, sortable=>1,
+                custom_columns => [ $username_custom_column, $extra_custom_column, ], # WARNING?
+            );
+simple_crud( prefix => '/users_customized_column3', record_title=>'A', db_table => 'users', editable => 0, sortable=>1,
                 custom_columns => [ $username_custom_column, $extra_custom_column, $id_custom_column ], # WARNING
             );
-#simple_crud( prefix => '/users_customized_column', record_title=>'A', db_table => 'users', editable => 0, sortable=>1,
-#                custom_columns => [ $username_custom_column, $id_custom_column ], # NO WARNING
-#            );
 
 1;
