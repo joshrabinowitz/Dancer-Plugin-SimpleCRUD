@@ -86,10 +86,10 @@ sub main {
     test_htmltree_contents( $users_custom_columns_tree, [qw( thead:0 tr:0 )], ["id", "username", "password", "extra"   ], "table headers, custom column" );
 
     # 3) values calculated in custom columns are as expected
-    test_htmltree_contents( $users_custom_columns_tree, [qw( tbody:0 tr:0 )], ["1", "sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK", "Hello, id: 1" ], "table content, custom column" );
+    test_htmltree_contents( $users_custom_columns_tree, [qw( tbody:0 tr:0 )], ["Hello, id: 1", "sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK", "Extra: 1" ], "table content, custom column" );
 
     # 3A) overridden customized columns as expected
-    test_htmltree_contents( $users_customized_column_tree, [qw( tbody:0 tr:0 )], ["1", "Username: sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK", ], "table content, customized column" );
+    test_htmltree_contents( $users_customized_column_tree, [qw( tbody:0 tr:0 )], ["Hello, id: 1", "Username: sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK", "Extra: 1"], "table content, customized column" );
 
     # 3B) custom_column's column_class gets applied both with added columns and overridden columns
     my $response = dancer_response( GET => "/users_custom_columns" );
