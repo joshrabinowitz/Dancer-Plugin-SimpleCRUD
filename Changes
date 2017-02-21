@@ -1,8 +1,11 @@
 Revision history for Dancer-Plugin-SimpleCRUD 
 
-1.12    2017-02-12
+1.12    2017-02-21
         [ ENHANCEMENTS ]
         - Add support for sql 'like' searches (joshrabinowitz)
+        [ BUG FIXES ]
+        - Fix HTML::Table's output to STDERR when using custom_classes with 
+          custom_columns (Issue #94)
 
 1.11    2016-11-17
         [ ENHANCEMENTS ]
