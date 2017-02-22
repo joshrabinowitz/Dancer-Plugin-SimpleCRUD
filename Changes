@@ -1,5 +1,10 @@
 Revision history for Dancer-Plugin-SimpleCRUD 
 
+=======
+1.14_01 
+        [ ENHANCEMENTS ]
+        - Add support for search_columns (joshrabinowitz)
+
 1.14    2017-05-22
         [ BUG FIXES]
         - Fix double prefixes when Dancer prefix is in effect (GH-36) (bigpresh)

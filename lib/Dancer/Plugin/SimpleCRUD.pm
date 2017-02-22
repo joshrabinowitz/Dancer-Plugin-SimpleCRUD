@@ -25,18 +25,6 @@ sub param {
     }
 }
 
-# this records the values from params() that we care about
-package Dancer::Plugin::SimpleCRUD::Params;
-use Mouse;
-
-has 'q' => ( is=>'rw', isa=>"Str" );    # query
-has 'sf' => ( is=>'rw', isa=>"Str" );   # searchfield
-has 'st' => ( is=>'rw', isa=>"Str" );   # searchtype
-has 'o' => ( is=>'rw', isa=>"Str" );    # order
-has 'd' => ( is=>'rw', isa=>"Str" );    # direction
-has 'page' => ( is=>'rw', isa=>"Int" ); # page num
-
-
 # Now, on to the real stuff
 package Dancer::Plugin::SimpleCRUD;
 
@@ -52,8 +40,9 @@ use URI::Escape;
 use List::Util qw(first);
 use List::MoreUtils qw( first_index uniq );
 use Dancer::Plugin::SimpleCRUD::Constants qw( default_searchtype searchtypes );
+use Data::Dump qw(dump);    # TODO - remove
 
-our $VERSION = '1.14';
+our $VERSION = '1.14_01';
 
 =encoding utf8
 
@@ -447,6 +436,31 @@ CSV/TSV/JSON/XML.  The download links will appear at the top of the page.
 A hashref to specify columns in the table which are foreign keys; for each one,
 the value should be a hashref containing the keys C<table>, C<key_column> and
 C<label_column>.
+
+=item C<search_columns>
+
+An arrayref of hashrefs to specify additional table(s) and columns to allow searching on.
+
+Assuming a 'users' table with columns 'id' and 'username', and a 'user_data' table with columns
+'user_id', 'group_id', 'zip_code', and the following definition:
+
+    ...
+    search_columns => [
+        {
+            name => 'by_group_id', 
+            joins => [ 
+                { table=>'user_data', table_alias=>'user_data_1', on_left=>'id', on_right=>'user_id', match_column=>'group_id' } ,
+            ]
+        },
+        {
+            name => 'by_zip_code', 
+            joins => [ 
+                { table=>'user_data', table_alias=>'user_data_2', on_left=>'id', on_right=>'user_id', match_column=>'zip_code' } ,
+        },
+    ],
+    ...
+
+Will allow searches on 'group_id' and 'zip_code' columns matching each 'users' row.
 
 =item C<custom_columns>
 
@@ -1231,7 +1245,6 @@ SEARCHFORM
                     $column_data->{COLUMN_NAME} = $search_join->{match_column};
                     $column_data->{TYPE_NAME} = "VARCHAR";  # TODO - figure out correct type and comparitor?
                 } else {
-                    use Data::Dump qw(dump);    # TODO - remove
                     warn "$0: can't find match_column from " . dump($search_column->{joins}) . " for $searchfield\n";   # TODO - remove
                 }
             }
