@@ -49,6 +49,7 @@ use HTML::Table::FromDatabase;
 use CGI::FormBuilder;
 use HTML::Entities;
 use URI::Escape;
+use List::Util qw(first);
 use List::MoreUtils qw( first_index uniq );
 use Dancer::Plugin::SimpleCRUD::Constants qw( default_searchtype searchtypes );
 
@@ -1059,6 +1060,8 @@ sub _create_list_handler {
     my $order_by_direction = params->{'d'} || "";
     my $q                   = _defined_or_empty(params->{'q'});
     my $display_q           = encode_entities( $q );
+
+    # start assembling the html
     my $html               = <<"SEARCHFORM";
  <p><form name="searchform" method="get">
      Field:  <select name="searchfield">$searchfield_options</select> &nbsp;&nbsp;
@@ -1159,6 +1162,8 @@ SEARCHFORM
         = $args->{editable}
         ? ", $table_name.$key_column AS actions"
         : '';
+
+    #start assembling the sql
     my $query = "SELECT $col_list $add_actions FROM $table_name";
     my @binds;
 
@@ -1183,6 +1188,20 @@ SEARCHFORM
         }
     }
 
+    my $st = params->{searchtype} || default_searchtype();
+    my (@search_wheres, @search_binds); # where clauses for searches, and the bind variable for each
+
+    # If we have search_column relationship info, we need to join on those tables too:
+    if (my $search_columns = $args->{search_columns}) {
+        for my $search_column ( @$search_columns ) {
+            for my $join ( @{$search_column->{joins} } ) {
+                my $left_table = $table_name;
+                $query .= " LEFT JOIN $join->{table} ON $left_table.$join->{on_left} = $join->{table}.$join->{on_right}";   # TODO - quoting
+                $left_table = $join->{table};
+            }
+        }
+    }
+
 
     # If we have a query or a where_filter, we need to assemble a WHERE clause...
     my $where_filter = _get_where_filter_from_args($args);
@@ -1193,18 +1212,30 @@ SEARCHFORM
         my ($where_filter_sql, @where_filter_binds)
             = $dbh->generate_where_clauses($where_filter);
 
-        my (@search_wheres, @search_binds);
         if (length $q) {    # this nested code is all for queries in $q
 
+            my $match_table_name = $table_name;
             #look for columns with matching names
             my ($column_data)
                 = grep { lc $_->{COLUMN_NAME} eq lc $searchfield }
                 @{$columns};
+            # look for matching column name in search_columns
+            if (my $search_column = first { lc $_->{name} eq lc $searchfield } @{ $args->{search_columns} } ) {
+                my $search_join = first { $_->{match_column} } @{ $search_column->{joins} };    # the first join with a match_column
+                if ($search_join) {
+                    $match_table_name = $search_join->{table};
+                    $column_data->{COLUMN_NAME} = $search_join->{match_column};
+                    $column_data->{TYPE_NAME} = "VARCHAR";  # TODO - figure out correct type and comparitor?
+                } else {
+                    use Data::Dump qw(dump);
+                    warn "$0: can't find match_column from " . dump($search_column->{joins}) . " for $searchfield\n";
+                }
+            }
+            
             debug(
                 "Searching on $column_data->{COLUMN_NAME} which is a "
                 . "$column_data->{TYPE_NAME}"
             );
-            my $st = params->{searchtype} || default_searchtype();
 
             if ($column_data) {
                 my $search_value = _search_value_from_query_and_searchtype( $q, $st );
@@ -1212,8 +1243,8 @@ SEARCHFORM
                 my ($searchtype_row) = grep { $_->[0] eq $st } searchtypes();
                 my $cmp = $searchtype_row->[1]->{cmp} || '=';
                 push(@search_wheres,
-                    "$table_name."
-                    . $dbh->quote_identifier($searchfield)
+                    "$match_table_name."
+                    . $dbh->quote_identifier($column_data->{COLUMN_NAME})
                     . " $cmp ?" );
                 push(@search_binds, $search_value);
 
@@ -1227,15 +1258,17 @@ SEARCHFORM
                     _external_url($args->{dancer_prefix}, $args->{prefix});
             } 
             # now look for search_columns, which we don't display but are searchable
-            elsif (0 && $args->{search_columns}) {
+            elsif ($args->{search_columns}) {
                 my $search_column = first { lc( $_->{name} ) eq lc $searchfield} @{$args->{search_columns}};
-                die "$0: can't find column or search_column to perform query on" unless $search_column;
+                #die "$0: can't find column or search_column to perform query on" unless $search_column;
                 if ($search_column) {
-                    my $search_value = _search_value_from_query_and_searchtype( $q, $st );
-                    my $joins = $search_column->{joins};
-                    #my $cmp = "=";
-                    #push( @search_wheres, "$joins->{table}." . $dbh->quote_identifier($joins->{match_column})
-
+                    for my $join ( @{$search_column->{joins} } ) {
+                        if (my $match_column = $join->{match}) {
+                            my $search_value = _search_value_from_query_and_searchtype( $q, $st );
+                            push(@search_wheres, "$join->{table}.$match_column=?"); # TODO - support cmp?
+                            push(@search_binds, $search_value);
+                        }
+                    }
                 }
             }
 
@@ -1339,6 +1372,7 @@ SEARCHFORM
             . " $order_by_direction ";
     }
 
+
     if ($args->{paginate} && $args->{paginate} =~ /^\d+$/) {
         my $page_size = $args->{paginate};
 
@@ -1380,7 +1414,9 @@ SEARCHFORM
         $query .= " LIMIT $limit OFFSET $offset ";
     }
 
+    # At this point we have the SQL. Run the query and  create the rest of the HTML, or give the file for download
     debug("Running query: $query");
+    #warn("Running query: $query (@binds)");
     my $sth = $dbh->prepare($query);
     $sth->execute(@binds)
         or die "Failed to query for records in $table_name - "
@@ -1449,6 +1485,7 @@ SEARCHFORM
         }
     }
 
+    # fetch the rows and create the HTML
     $html .= $table->getTable || '';
 
     if ($args->{addable} && _has_permission('edit', $args)) {
