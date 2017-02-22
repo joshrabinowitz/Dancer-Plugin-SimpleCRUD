@@ -1031,7 +1031,7 @@ sub _create_list_handler {
     }
 
     my $searchfield = params->{searchfield} || $key_column;
-    my @show_columns = (@$columns, map { my %h; $h{COLUMN_NAME} = $_->{name}; \%h } @{ $args->{search_columns} } );
+    my @searchfields = (@$columns, map { my %h; $h{COLUMN_NAME} = $_->{name}; \%h } @{ $args->{search_columns} } );
     my $searchfield_options = join(
         "\n",
         map {
@@ -1044,7 +1044,7 @@ sub _create_list_handler {
                 ? "selected"
                 : "";
             "<option $sel value='$_->{COLUMN_NAME}'>$friendly_name</option>"
-            } @show_columns
+            } @searchfields
     );
     my $default_searchtype = default_searchtype();
     my @searchtypes = searchtypes();
@@ -1194,11 +1194,14 @@ SEARCHFORM
 
     # If we have search_column relationship info, we need to join on those tables too:
     if (my $search_columns = $args->{search_columns}) {
+        my $join_number = 1;
         for my $search_column ( @$search_columns ) {
             for my $join ( @{$search_column->{joins} } ) {
-                my $left_table = $table_name;
-                $query .= " LEFT JOIN $join->{table} ON $left_table.$join->{on_left} = $join->{table}.$join->{on_right}";   # TODO - quoting
-                $left_table = $join->{table};
+                my $table_alias = $join->{table_alias};
+                $join_number++;
+                my $left_table_alias = $table_name;
+                $query .= " LEFT JOIN $join->{table} as $table_alias ON $left_table_alias.$join->{on_left} = $table_alias.$join->{on_right}";   # TODO - quoting
+                $left_table_alias = $join->{table_alias};
             }
         }
     }
@@ -1224,7 +1227,7 @@ SEARCHFORM
             if (my $search_column = first { lc $_->{name} eq lc $searchfield } @{ $args->{search_columns} } ) {
                 my $search_join = first { $_->{match_column} } @{ $search_column->{joins} };    # the first join with a match_column
                 if ($search_join) {
-                    $match_table_name = $search_join->{table};
+                    $match_table_name = $search_join->{table_alias};
                     $column_data->{COLUMN_NAME} = $search_join->{match_column};
                     $column_data->{TYPE_NAME} = "VARCHAR";  # TODO - figure out correct type and comparitor?
                 } else {
@@ -1266,7 +1269,7 @@ SEARCHFORM
                     for my $join ( @{$search_column->{joins} } ) {
                         if (my $match_column = $join->{match}) {
                             my $search_value = _search_value_from_query_and_searchtype( $q, $st );
-                            push(@search_wheres, "$join->{table}.$match_column=?"); # TODO - support cmp?
+                            push(@search_wheres, "$join->{table_alias}.$match_column=?"); # TODO - support cmp?
                             push(@search_binds, $search_value);
                         }
                     }

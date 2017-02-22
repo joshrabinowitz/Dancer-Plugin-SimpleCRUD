@@ -64,11 +64,17 @@ simple_crud( prefix => '/users_customized_column3', record_title=>'A', db_table 
 simple_crud( prefix => '/users_by_group', record_title=>'A', db_table => 'users', editable => 0, sortable=>1,
              search_columns => [    # this lets you do searches on a column called 'by_group_id' for group_ids
                  { 
-                     name => 'by_group_id', 
+                    name => 'by_group_id', 
                     joins => [
-                        { table => 'user_groups', on_left=>'id', on_right=>'user_id', match_column=>'group_id' }
+                        { table => 'user_groups', on_left=>'id', on_right=>'user_id', match_column=>'group_id', table_alias=>'user_groups_1' }  # todo - don't require table_alias
                     ],
-                }
+                },
+                 { 
+                    name => 'by_user_groups_id', 
+                    joins => [
+                        { table => 'user_groups', on_left=>'id', on_right=>'user_id', match_column=>'id', table_alias=>'user_groups_2' }    # todo - don't require table_alias
+                    ],
+                },
              ],
             );
 1;
