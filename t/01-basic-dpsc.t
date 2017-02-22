@@ -57,24 +57,18 @@ sub main {
     ], 200, "GET {search on username like '1'} returns 200";
 
     # test html returned from GET $prefix on cruds
-    my $users_tree = crud_fetch_to_htmltree(GET => '/users', 200);
-    my $users_editable_tree
-        = crud_fetch_to_htmltree(GET => '/users_editable', 200);
-    my $users_editable_not_addable_tree
-        = crud_fetch_to_htmltree(GET => '/users_editable_not_addable', 200);
-    my $users_custom_columns_tree
-        = crud_fetch_to_htmltree(GET => '/users_custom_columns', 200);
-    my $users_customized_column_tree
-        = crud_fetch_to_htmltree(GET => '/users_customized_column', 200);
-    my $users_customized_column2_tree
-        = crud_fetch_to_htmltree(GET => '/users_customized_column2', 200);
-    my $users_customized_column3_tree
-        = crud_fetch_to_htmltree(GET => '/users_customized_column3', 200);
-    my $users_search_tree = crud_fetch_to_htmltree(GET => '/users?q=2', 200);
-    my $users_like_search_tree = crud_fetch_to_htmltree(
-        GET => '/users?searchtype=like&searchfield=username&q=bigpresh',
-        200
-    );
+    my $users_tree                = crud_fetch_to_htmltree( GET => '/users',                 200 );
+    my $users_editable_tree       = crud_fetch_to_htmltree( GET => '/users_editable',        200 );
+    my $users_editable_not_addable_tree       = crud_fetch_to_htmltree( GET => '/users_editable_not_addable',        200 );
+    my $users_custom_columns_tree = crud_fetch_to_htmltree( GET => '/users_custom_columns',  200 );
+    my $users_customized_column_tree = crud_fetch_to_htmltree( GET => '/users_customized_column',  200 );
+    my $users_customized_column2_tree = crud_fetch_to_htmltree( GET => '/users_customized_column2',  200 );
+    my $users_customized_column3_tree = crud_fetch_to_htmltree( GET => '/users_customized_column3',  200 );
+    my $users_search_tree         = crud_fetch_to_htmltree( GET => '/users?q=2',             200 );
+    my $users_like_search_tree    = crud_fetch_to_htmltree( GET => '/users?searchtype=like&searchfield=username&q=bigpresh',      200 );
+
+    #my $users_by_group_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_group_id&q=2', 200 );
+
 
     ###############################################################################
     # test suggestions from bigpresh:
