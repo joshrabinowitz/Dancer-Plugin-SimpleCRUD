@@ -28,12 +28,13 @@ sub param {
 # this records the values from params() that we care about
 package Dancer::Plugin::SimpleCRUD::Params;
 use Mouse;
+
 has 'q' => ( is=>'rw', isa=>"Str" );    # query
 has 'sf' => ( is=>'rw', isa=>"Str" );   # searchfield
 has 'st' => ( is=>'rw', isa=>"Str" );   # searchtype
-has 'o' => ( is=>'rw', isa=>"Str" );   # order
-has 'd' => ( is=>'rw', isa=>"Str" );   # direction
-has 'page' => ( is=>'rw', isa=>"Int" );   # page num
+has 'o' => ( is=>'rw', isa=>"Str" );    # order
+has 'd' => ( is=>'rw', isa=>"Str" );    # direction
+has 'page' => ( is=>'rw', isa=>"Int" ); # page num
 
 
 # Now, on to the real stuff
@@ -49,7 +50,6 @@ use CGI::FormBuilder;
 use HTML::Entities;
 use URI::Escape;
 use List::MoreUtils qw( first_index uniq );
-use Data::Dump qw(dump);
 use Dancer::Plugin::SimpleCRUD::Constants qw( default_searchtype searchtypes );
 
 our $VERSION = '1.14';
