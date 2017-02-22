@@ -1031,6 +1031,7 @@ sub _create_list_handler {
     }
 
     my $searchfield = params->{searchfield} || $key_column;
+    my @show_columns = (@$columns, map { my %h; $h{COLUMN_NAME} = $_->{name}; \%h } @{ $args->{search_columns} } );
     my $searchfield_options = join(
         "\n",
         map {
@@ -1043,7 +1044,7 @@ sub _create_list_handler {
                 ? "selected"
                 : "";
             "<option $sel value='$_->{COLUMN_NAME}'>$friendly_name</option>"
-            } @$columns
+            } @show_columns
     );
     my $default_searchtype = default_searchtype();
     my @searchtypes = searchtypes();
@@ -1227,8 +1228,8 @@ SEARCHFORM
                     $column_data->{COLUMN_NAME} = $search_join->{match_column};
                     $column_data->{TYPE_NAME} = "VARCHAR";  # TODO - figure out correct type and comparitor?
                 } else {
-                    use Data::Dump qw(dump);
-                    warn "$0: can't find match_column from " . dump($search_column->{joins}) . " for $searchfield\n";
+                    use Data::Dump qw(dump);    # TODO - remove
+                    warn "$0: can't find match_column from " . dump($search_column->{joins}) . " for $searchfield\n";   # TODO - remove
                 }
             }
             
