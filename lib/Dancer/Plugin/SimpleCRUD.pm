@@ -35,25 +35,6 @@ has 'o' => ( is=>'rw', isa=>"Str" );   # order
 has 'd' => ( is=>'rw', isa=>"Str" );   # direction
 has 'page' => ( is=>'rw', isa=>"Int" );   # page num
 
-package Dancer::Plugin::SimpleCRUD::Constants;
-use base 'Exporter';
-our @EXPORT_OK = qw( default_searchtype searchtypes );
-use constant default_searchtype => 'e'; # equality
-use constant searchtypes => (
-    [ e   => { name => "Equals",           cmp => "=" } ],
-    [ c   => { name => "Contains",         cmp => "like" } ],
-    [ b   => { name => "Begins With",      cmp => "like" } ],
-    [ ne  => { name => "Does Not Equal",   cmp => "!=" } ],
-    [ nc  => { name => "Does Not Contain", cmp => "not like" } ],
-
-    [ lt  => { name => "Less Than",                cmp => "<" } ],
-    [ lte => { name => "Less Than or Equal To",    cmp => "<=" } ],
-    [ gt  => { name => "Greater Than",             cmp => ">" } ],
-    [ gte => { name => "Greater Than or Equal To", cmp => ">=" } ],
-
-    [ like => { name => "Like", cmp => "LIKE" } ],
-);
-
 
 # Now, on to the real stuff
 package Dancer::Plugin::SimpleCRUD;
@@ -69,6 +50,7 @@ use HTML::Entities;
 use URI::Escape;
 use List::MoreUtils qw( first_index uniq );
 use Data::Dump qw(dump);
+use Dancer::Plugin::SimpleCRUD::Constants qw( default_searchtype searchtypes );
 
 our $VERSION = '1.14';
 
@@ -1062,13 +1044,15 @@ sub _create_list_handler {
             "<option $sel value='$_->{COLUMN_NAME}'>$friendly_name</option>"
             } @$columns
     );
+    my $default_searchtype = default_searchtype();
+    my @searchtypes = searchtypes();
     my $searchtype_options = join( "\n",
         map { 
             my ($search_code, $hashref) = @$_;
             my $name = $hashref->{name};
-            my $sel = (params->{searchtype} || default_searchtype()) eq $search_code;
+            my $sel = (params->{searchtype} || $default_searchtype) eq $search_code;
             sprintf("<option value='%s'%s>%s</option>", $search_code, $sel ? " selected" : "", $name);
-        } (searchtypes())
+        } @searchtypes 
     );
 
     my $order_by_param     = params->{'o'} || "";
