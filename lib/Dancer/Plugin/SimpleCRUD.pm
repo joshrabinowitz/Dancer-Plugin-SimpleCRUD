@@ -449,18 +449,28 @@ Assuming a 'users' table with columns 'id' and 'username', and a 'user_data' tab
         {
             name => 'by_group_id', 
             joins => [ 
-                { table=>'user_data', table_alias=>'user_data_1', on_left=>'id', on_right=>'user_id', match_column=>'group_id' } ,
-            ]
+                {   
+                    table=>'user_data',         table_alias=>'user_data_1', 
+                    on_left=>'id',              on_right=>'user_id', 
+                    match_column=>'group_id' 
+                },
+            ],
         },
         {
             name => 'by_zip_code', 
             joins => [ 
-                { table=>'user_data', table_alias=>'user_data_2', on_left=>'id', on_right=>'user_id', match_column=>'zip_code' } ,
+                { 
+                    table=>'user_data',         table_alias=>'user_data_2', 
+                    on_left=>'id',              on_right=>'user_id', 
+                    match_column=>'zip_code',
+                },
+            ],
         },
     ],
     ...
 
-Will allow searches on 'group_id' and 'zip_code' columns matching each 'users' row.
+This will allow searches on 'group_id' and 'zip_code' columns matching each 'users' row.
+You can also add multiple 'joins' hashrefs to join across multiple tables, example pending.
 
 =item C<custom_columns>
 
