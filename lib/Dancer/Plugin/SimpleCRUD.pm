@@ -1247,24 +1247,25 @@ SEARCHFORM
             my ($column_data)
                 = grep { lc $_->{COLUMN_NAME} eq lc $searchfield }
                 @{$columns};
-            # look for matching column name in search_columns
-            if (my $search_column = first { lc $_->{name} eq lc $searchfield } @{ $args->{search_columns} } ) {
-                my $search_join = first { $_->{match_column} } @{ $search_column->{joins} };    # the first join with a match_column
-                if ($search_join) {
-                    $match_table_name = $search_join->{table_alias};
-                    $column_data->{COLUMN_NAME} = $search_join->{match_column};
-                    $column_data->{TYPE_NAME} = "VARCHAR";  # TODO - figure out correct type and comparitor?
-                } else {
-                    warn "$0: can't find match_column from " . dump($search_column->{joins}) . " for $searchfield\n";   # TODO - remove
-                }
-            }
+            ## look for matching column name in search_columns
+            #if (my $search_column = first { lc $_->{name} eq lc $searchfield } @{ $args->{search_columns} } ) {
+            #    my $search_join = first { $_->{match_column} } @{ $search_column->{joins} };    # the first join with a match_column
+            #    if ($search_join) {
+            #        $match_table_name = $search_join->{table_alias};
+            #        $column_data->{COLUMN_NAME} = $search_join->{match_column};
+            #        $column_data->{TYPE_NAME} = "VARCHAR";  # TODO - figure out correct type and comparitor?
+            #    } else {
+            #        warn "$0: can't find match_column from " . dump($search_column->{joins}) . " for $searchfield\n";   # TODO - remove
+            #    }
+            #}
+             
             
-            debug(
-                "Searching on $column_data->{COLUMN_NAME} which is a "
-                . "$column_data->{TYPE_NAME}"
-            );
 
             if ($column_data) {
+                debug(
+                    "Searching on $column_data->{COLUMN_NAME} which is a "
+                    . "$column_data->{TYPE_NAME}"
+                );
                 my $search_value = _search_value_from_query_and_searchtype( $q, $st );
 
                 my ($searchtype_row) = grep { $_->[0] eq $st } searchtypes();
@@ -1284,7 +1285,7 @@ SEARCHFORM
                 $html .= sprintf '&mdash;<a href="%s">Reset search</a></p>',
                     _external_url($args->{dancer_prefix}, $args->{prefix});
             } 
-            # now look for search_columns, which we don't display but are searchable
+            ## now look for search_column which we don't display but are searchable
             elsif ($args->{search_columns}) {
                 my $search_column = first { lc( $_->{name} ) eq lc $searchfield} @{$args->{search_columns}};
                 #die "$0: can't find column or search_column to perform query on" unless $search_column;
@@ -1297,6 +1298,8 @@ SEARCHFORM
                         }
                     }
                 }
+            } else {
+                die "Can't find column to search on for searchfield: $searchfield";
             }
 
         }
