@@ -1057,6 +1057,7 @@ sub _create_list_handler {
     }
 
     my $searchfield = params->{searchfield} || $key_column;
+    # add the search columns to the list of columns in the option menu
     my @searchfields = (@$columns, map { my %h; $h{COLUMN_NAME} = $_->{name}; \%h } @{ $args->{search_columns} } );
     my $searchfield_options = join(
         "\n",
