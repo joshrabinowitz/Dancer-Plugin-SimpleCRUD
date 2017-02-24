@@ -74,13 +74,13 @@ simple_crud( prefix => '/users_by_group', record_title=>'A', db_table => 'users'
                         { table => 'user_groups', on_left=>'id', on_right=>'user_id', match_column=>'group_id', table_alias=>'user_groups_1' }  # todo - don't require table_alias
                     ],
                 },
-                #{ 
-                #    name => 'by_groupname', 
-                #    joins => [  # join from users -> user_groups -> groups
-                #        { table => 'user_groups', on_left=>'id', on_right=>'user_id', table_alias=>'user_groups_2' },                               # todo - don't require table_alias
-                #        { table => 'groups', on_left=>'group_id', on_right=>'id', table_alias=>'groups_1', match_column=>"groupname" },             # todo - don't require table_alias
-                #    ],
-                #},
+                { 
+                    name => 'by_groupname', 
+                    joins => [  # join from users -> user_groups -> groups
+                        { table => 'user_groups', on_left=>'id', on_right=>'user_id', table_alias=>'user_groups_2' },                               # todo - don't require table_alias
+                        { table => 'groups', on_left=>'group_id', on_right=>'id', table_alias=>'groups_1', match_column=>"groupname" },             # todo - don't require table_alias
+                    ],
+                },
              ],
          );
 1;

@@ -69,10 +69,8 @@ sub main {
     my $users_like_search_tree    = crud_fetch_to_htmltree( GET => '/users?searchtype=like&searchfield=username&q=bigpresh',      200 );
 
     my $users_by_nosuch_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=NOSUCH&q=2', 500 );
-    #my $users_by_group_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_group_id&q=2', 200 );
-    #my $users_by_user_groups_id_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_user_groups_id&q=1', 200 );
-
-
+    my $users_by_group_id_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_group_id&q=1', 200 );
+    my $users_by_groupname_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_groupname&q=admin', 200 );
 
     ###############################################################################
     # test suggestions from bigpresh:
@@ -211,6 +209,12 @@ sub main {
         [qw( tbody:0 tr:0 )],
         ["2", "bigpresh", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"],
         "table content, search username like 'bigpresh'"
+    );
+    test_htmltree_contents( 
+        $users_by_group_id_search_tree,  
+        [qw( tbody:0 tr:0 )], 
+        ["1", "sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"  ],               
+        "table content, search users_by_group_id q=1" 
     );
 
     # 6) sorting works
