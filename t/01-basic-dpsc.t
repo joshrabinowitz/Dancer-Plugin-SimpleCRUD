@@ -37,6 +37,7 @@ my $trap = Dancer::Logger::Capture->trap;
 main();
 
 sub main {
+    response_status_is [ GET => '/nonexistant' ], 404, "GET /nonexistant returns 404";
 
     # test basic routes return 200 codes
     response_status_is [GET => '/users'], 200, "GET /users returns 200";
@@ -67,6 +68,7 @@ sub main {
     my $users_search_tree         = crud_fetch_to_htmltree( GET => '/users?q=2',             200 );
     my $users_like_search_tree    = crud_fetch_to_htmltree( GET => '/users?searchtype=like&searchfield=username&q=bigpresh',      200 );
 
+    my $users_by_nosuch_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=NOSUCH&q=2', 500 );
     #my $users_by_group_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_group_id&q=2', 200 );
     #my $users_by_user_groups_id_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_user_groups_id&q=1', 200 );
 
@@ -216,10 +218,10 @@ sub main {
 
     # show captured errors
     my $traps = $trap->read();
-    my @errors = grep { $_->{level} eq "error" } @$traps;
-    ok(@errors == 0, "no errors");
-    for my $error (@errors) {
-        diag("trapped error: $error->{message}");
+    my @unexpected_errors = grep { $_->{level} eq "error" && !($_->{message} =~ /NOSUCH/) } @$traps;
+    ok( @unexpected_errors == 0, "no errors" ); 
+    for my $error (@unexpected_errors) {
+        diag( "trapped error: $error->{message}" );
     }
 
     done_testing();
