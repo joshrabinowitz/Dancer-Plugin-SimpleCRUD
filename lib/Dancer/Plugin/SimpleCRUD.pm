@@ -734,7 +734,7 @@ sub _create_view_handler {
     my $values_from_database = $dbh->quick_select($table_name, $where);
 
     # Find out about table columns:
-    my $all_table_columns = _find_columns($dbh, $args->{db_table});
+    my $all_table_columns = _find_columns($dbh, $args->{db_table}, $args->{search_columns});
     my @rows = (['Column Name', 'Value']);
     my $table = HTML::Table->new( -border=>1 );
     $table->addSectionRow('thead', 0, 'Column Name', 'Value');
@@ -778,7 +778,7 @@ sub _create_add_edit_route {
     }
 
     # Find out about table columns:
-    my $all_table_columns = _find_columns($dbh, $args->{db_table});
+    my $all_table_columns = _find_columns($dbh, $args->{db_table}, $args->{search_columns});
     my @editable_columns;
 
     # Now, find out which ones we can edit.
@@ -1031,7 +1031,7 @@ sub _create_list_handler {
     my ($args, $table_name, $key_column) = @_;
 
     my $dbh = database($args->{db_connection_name});
-    my $columns = _find_columns($dbh, $table_name);
+    my $columns = _find_columns($dbh, $table_name); # $args->{search_columns});
 
     my $display_columns = $args->{'display_columns'};
 
@@ -1504,7 +1504,9 @@ SEARCHFORM
     );
 
     # apply custom columns' column_classes as specified. Can this be done via HTML::Table::FromDatabase->new() above?
-    my @all_column_names = uniq ( (map { $_->{COLUMN_NAME} } @$columns), (map { $_->{name} } @{$args->{custom_columns}}) );
+    my @all_column_names = uniq ( (map { $_->{COLUMN_NAME} } @$columns), 
+                                  (map { $_->{name} } @{$args->{custom_columns}}), );
+                                  #(map { $_->{name} } @{$args->{search_columns}}) );
     for my $custom_col_spec (@{ $args->{custom_columns} || [] } ) {
         if (my $column_class = $custom_col_spec->{column_class}) {
             my $first_index = first_index { $_ eq $custom_col_spec->{name} } @all_column_names;
@@ -1638,8 +1640,28 @@ sub _return_downloadable_query {
 # mysql_is_pri_key
 # mysql_values (for an enum, ["One", "Two", "Three"]
 sub _find_columns {
-    my ($dbh, $table_name) = @_;
-    my $sth = $dbh->column_info(undef, undef, $table_name, undef)
+    my ($dbh, $table_name, $search_columns) = @_;
+    my @columns = _get_column_info( $dbh, $table_name );
+
+    # fetch info about the search columns
+    for my $search_column (@{$search_columns}) {
+        for my $join ( grep { $_->{match_column} } @{ $search_column->{joins}}) {
+            warn "test: looking for $join->{match_column}\n";
+            push( @columns, _get_column_info( $dbh, $join->{table}, $join->{match_column} ) );
+        }
+    }
+
+    #if ($search_columns) { die "TESTING: COLUMNS: " . dump( \@columns ) . "\n"; }
+    return [@columns];
+}
+
+# if $column if passed, returns info about that column in that table
+# if no $column, returns info about all the columns in that table
+sub _get_column_info {
+    my ($dbh, $table_name, $column) = @_;
+
+    # $sth = $dbh->column_info( $catalog, $schema, $table, $column );
+    my $sth = $dbh->column_info(undef, undef, $table_name, $column)
         or die "Failed to get column info for $table_name - " . $dbh->errstr;
     my @columns;
     while (my $col = $sth->fetchrow_hashref) {
@@ -1651,8 +1673,8 @@ sub _find_columns {
     die "no columns for table [$table_name]--are you sure this table exists in the database [$dbh->{Driver}->{Name}:$dbh->{Name}]?" unless @columns;
 
     # Return the columns, sorted by their position in the table:
-    return [sort { $a->{ORDINAL_POSITION} <=> $b->{ORDINAL_POSITION} }
-            @columns];
+    return sort { $a->{ORDINAL_POSITION} <=> $b->{ORDINAL_POSITION} }
+            @columns;
 }
 
 # Given parts of an URL, assemble them together, prepending the current prefix

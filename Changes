@@ -3,7 +3,7 @@ Revision history for Dancer-Plugin-SimpleCRUD
 =======
 1.14_01 
         [ ENHANCEMENTS ]
-        - Add support for search_columns (joshrabinowitz)
+        - Add search_columns feature (joshrabinowitz)
 
 1.14    2017-05-22
         [ BUG FIXES]
@@ -17,7 +17,7 @@ Revision history for Dancer-Plugin-SimpleCRUD
 
 1.12    2017-02-12
         [ ENHANCEMENTS ]
-        - Add support for sql 'like' searches (joshrabinowitz)
+        - Add search options for sql 'Like' searches (joshrabinowitz)
 
 1.11    2016-11-17
         [ ENHANCEMENTS ]
