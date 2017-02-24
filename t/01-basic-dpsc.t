@@ -76,7 +76,7 @@ sub main {
         GET => '/users?searchfield=username&searchtype=like&q=1'
     ], 200, "GET {search on username like '1'} returns 200";
 
-    ## These tests make sure returned HTML looks correct
+    ## These tests make sure routes give right status codes
     # test html returned from GET $prefix on cruds
     my $users_tree                = crud_fetch_to_htmltree( GET => '/users',                 200 );
     my $users_editable_tree       = crud_fetch_to_htmltree( GET => '/users_editable',        200 );
