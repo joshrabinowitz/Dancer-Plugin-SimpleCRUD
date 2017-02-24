@@ -146,10 +146,12 @@ connection.
         ],
         search_columns => [
             { 
-                name => 'division_region', # join through team -> division -> region tables
+                name => 'division_region', # search through join across team -> division -> region tables
                 joins => [ 
-                    { table => 'division',  on_left => 'id', on_right => 'team_id', match_column='name' },  
-                        # join division on (team.id=division.team_id) where division.name = value
+                    # where teams.id=division.team_id...
+                    { table => 'division',  on_left => 'id',        on_right => 'team_id', },      
+                    # and division.region_id=region.id and division.name=?
+                    { table => 'region',    on_left => 'region_id', on_right => 'id', match_column='name' },  
                 ],
             },
         ],
@@ -1251,7 +1253,7 @@ SEARCHFORM
             if (my $search_column = first { lc $_->{name} eq lc $searchfield } @{ $args->{search_columns} } ) {
                 my $search_join = first { $_->{match_column} } @{ $search_column->{joins} };    # the first join with a match_column
                 if ($search_join) {
-                    $match_table_name = $search_join->{table_alias};
+                    $match_table_name = $search_join->{table_alias};    # TODO - make aliases automatic
                     $column_data->{COLUMN_NAME} = $search_join->{match_column};
                     $column_data->{TYPE_NAME} = "VARCHAR";  # TODO - figure out correct type and comparitor?
                 } else {
