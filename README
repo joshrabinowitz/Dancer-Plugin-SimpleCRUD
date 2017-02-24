@@ -70,7 +70,7 @@ SYNOPSIS
             query_auto_focus => 1,
             downloadable => 1,
             foreign_keys => {
-                columnname => {
+               columnname => {
                     table => 'venues',
                     key_column => 'id',
                     label_column => 'name',
@@ -90,6 +90,17 @@ SYNOPSIS
                         return "<a href='$search'>$label</a>";
                     },
                     column_class => "column-class",
+                },
+            ],
+            search_columns => [
+                { 
+                    name => 'division_region', # search through join across team -> division -> region tables
+                    joins => [ 
+                        # where teams.id=division.team_id...
+                        { table => 'division',  on_left => 'id',        on_right => 'team_id', },      
+                        # and division.region_id=region.id and division.name=?
+                        { table => 'region',    on_left => 'region_id', on_right => 'id', match_column='name' },  
+                    ],
                 },
             ],
             auth => {
@@ -362,6 +373,43 @@ OPTIONS
         A hashref to specify columns in the table which are foreign keys;
         for each one, the value should be a hashref containing the keys
         "table", "key_column" and "label_column".
+
+    "search_columns"
+        An arrayref of hashrefs to specify additional table(s) and columns
+        to allow searching on.
+
+        Assuming a 'users' table with columns 'id' and 'username', and a
+        'user_data' table with columns 'user_id', 'group_id', 'zip_code',
+        and the following definition:
+
+            ...
+            search_columns => [
+                {
+                    name => 'by_group_id', 
+                    joins => [ 
+                        {   
+                            table=>'user_data',         table_alias=>'user_data_1', 
+                            on_left=>'id',              on_right=>'user_id', 
+                            match_column=>'group_id' 
+                        },
+                    ],
+                },
+                {
+                    name => 'by_zip_code', 
+                    joins => [ 
+                        { 
+                            table=>'user_data',         table_alias=>'user_data_2', 
+                            on_left=>'id',              on_right=>'user_id', 
+                            match_column=>'zip_code',
+                        },
+                    ],
+                },
+            ],
+            ...
+
+        This will allow searches on 'group_id' and 'zip_code' columns
+        matching each 'users' row. You can also add multiple 'joins'
+        hashrefs to join across multiple tables, example pending.
 
     "custom_columns"
         An arrayref of hashrefs to specify custom columns to appear in the
