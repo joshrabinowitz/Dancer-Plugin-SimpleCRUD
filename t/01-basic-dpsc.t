@@ -227,6 +227,11 @@ sub main {
         ["1", "sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"  ],               
         "table content, search users_by_group_id q=1" 
     );
+    test_htmltree_contents( $users_by_groupname_search_tree,  
+        [qw( tbody:0 tr:0 )], 
+        ["1", "sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"  ],               
+        "table content, search users_by_groupname q=admin" 
+    );
 
     # 6) sorting works
     # TODO
