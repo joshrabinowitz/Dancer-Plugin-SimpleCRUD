@@ -22,7 +22,6 @@ WriteMakefile(
         'DBD::SQLite'   => 1.50,
         'HTML::TreeBuilder' => 5.03,
         'List::MoreUtils' => 0.416,
-        'Mouse' => 2.0, 
         'Data::Dump' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
