@@ -39,7 +39,7 @@ use HTML::Entities;
 use URI::Escape;
 use List::MoreUtils qw( first_index uniq );
 
-our $VERSION = '1.12';
+our $VERSION = '1.14';
 
 =encoding utf8
 
@@ -575,7 +575,7 @@ sub simple_crud {
     if ($args{editable}) {
         _ensure_auth('edit', $handler, \%args);
         for ('/edit/:id') {
-            my $url = _construct_url($args{dancer_prefix}, $args{prefix}, $_);
+            my $url = _construct_url($args{prefix}, $_);
             Dancer::Logger::debug("Setting up route for $url");
             any ['get', 'post'] => $url => $handler;
         }
@@ -583,7 +583,7 @@ sub simple_crud {
     if ($args{addable}) {
         _ensure_auth('edit', $handler, \%args);
         for ('/add') {
-            my $url = _construct_url($args{dancer_prefix}, $args{prefix}, $_);
+            my $url = _construct_url($args{prefix}, $_);
             Dancer::Logger::debug("Setting up route for $url");
             any ['get', 'post'] => $url => $handler;
         }
@@ -597,7 +597,6 @@ sub simple_crud {
             \%args,
         );
     get _construct_url(
-        $args{dancer_prefix},
         $args{prefix},
     ) => $list_handler;
 
@@ -610,7 +609,7 @@ sub simple_crud {
         # support Javascript, otherwise the list page will have POSTed the ID
         # to us) (or they just came here directly for some reason)
         get _construct_url(
-            $args{dancer_prefix}, $args{prefix}, "/delete/:id"
+            $args{prefix}, "/delete/:id"
             ) => sub {
             return _apply_template(<<CONFIRMDELETE, $args{'template'}, $args{'record_title'});
 <p>
@@ -627,7 +626,7 @@ CONFIRMDELETE
 
         # A route for POST requests, to actually delete the record
         my $del_url_stub = _construct_url(
-            $args{dancer_prefix}, $args{prefix}, '/delete'
+            $args{prefix}, '/delete'
         );
         my $delete_handler = sub {
             my ($id) = params->{record_id} || splat;
@@ -661,7 +660,7 @@ CONFIRMDELETE
         post qr[$del_url_stub/?(.+)?$] => $delete_handler;
     }
     my $view_url_stub = _construct_url(
-        $args{dancer_prefix}, $args{prefix}, '/view'
+        $args{prefix}, '/view'
     );
     my $view_handler = _ensure_auth(
         'view',
@@ -720,11 +719,15 @@ sub _create_add_edit_route {
 
     # a hash containing the current values in the database
     my $values_from_database;
-    if ($id) {
+    if (defined $id) {
         my $where = _get_where_filter_from_args($args);
         $where->{$key_column} = $id;
         $values_from_database
             = $dbh->quick_select($table_name, $where);
+        if (!$values_from_database) {
+            send_error "$params->{title} $id not found", 404;
+
+        }
     }
 
     # Find out about table columns:
