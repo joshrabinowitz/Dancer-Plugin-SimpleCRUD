@@ -1421,7 +1421,7 @@ SEARCHFORM
         my $url = _external_url($args->{dancer_prefix}, $args->{prefix})
             . "?o=$o&d=$d&q=$qt&searchfield=$sf&searchtype=$st";
         $html .= "<p>";
-    $html .= "<table class=\"$paginate_table_class\"><tr>";
+        $html .= "<table class=\"$paginate_table_class\"><tr>";
 
         if ($page > 0) {
             $html

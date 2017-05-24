@@ -36,32 +36,19 @@ my $trap = Dancer::Logger::Capture->trap;
 
 main();
 
-###############################################################################
-# test suggestions from bigpresh:
-# Hmm, I'd like to parse the resulting output, and test:
-#    1) all columns are present as expected
-#    2) supplied custom columns are present
-#    3) values calculated in custom columns are as expected
-#    4) add/edit/delete routes work
-#    5) searching works
-#    6) sorting works
-###############################################################################
-
 sub main {
     ## These tests make sure routes give right status codes
 
     # negative tests
     response_status_is [ GET => '/nonexistant' ], 404, "GET /nonexistant returns 404";
-    response_status_is [ GET => '/users/add' ], 404, "GET /users/add returns 404";
-    response_status_is [ GET => '/users' ], 200, "GET /users returns 200";
     response_status_is [ GET => '/nonexistant' ], 404, "GET /nonexistant returns 404";
     response_status_is [ GET => '/users?searchfield=NOSUCH&searchtype=e&q=1' ], 500, 
-    "GET {search on NOSUCH=1} returns 500";
+        "GET {search on NOSUCH=1} returns 500";
+    response_status_is [GET => '/users/add'], 404,
+        "GET /users/add returns 404";
 
     # test basic routes return 200 codes
     response_status_is [GET => '/users'], 200, "GET /users returns 200";
-    response_status_is [GET => '/users/add'], 404,
-        "GET /users/add returns 404";
     response_status_is [GET => '/users_editable/add'], 200,
         "GET /users_editable/add returns 200";
     response_status_is [GET => '/users_editable/edit/1'], 200,
@@ -78,21 +65,39 @@ sub main {
 
     ## These tests make sure routes give right status codes
     # test html returned from GET $prefix on cruds
-    my $users_tree                = crud_fetch_to_htmltree( GET => '/users',                 200 );
-    my $users_editable_tree       = crud_fetch_to_htmltree( GET => '/users_editable',        200 );
-    my $users_editable_not_addable_tree       = crud_fetch_to_htmltree( GET => '/users_editable_not_addable',        200 );
-    my $users_custom_columns_tree = crud_fetch_to_htmltree( GET => '/users_custom_columns',  200 );
-    my $users_customized_column_tree = crud_fetch_to_htmltree( GET => '/users_customized_column',  200 );
-    my $users_customized_column2_tree = crud_fetch_to_htmltree( GET => '/users_customized_column2',  200 );
-    my $users_customized_column3_tree = crud_fetch_to_htmltree( GET => '/users_customized_column3',  200 );
-    my $users_search_tree         = crud_fetch_to_htmltree( GET => '/users?q=2',             200 );
-    my $users_like_search_tree    = crud_fetch_to_htmltree( GET => '/users?searchtype=like&searchfield=username&q=bigpresh',      200 );
-
+    my $users_tree = crud_fetch_to_htmltree(GET => '/users', 200);
+    my $users_editable_tree
+        = crud_fetch_to_htmltree(GET => '/users_editable', 200);
+    my $users_editable_not_addable_tree
+        = crud_fetch_to_htmltree(GET => '/users_editable_not_addable', 200);
+    my $users_custom_columns_tree
+        = crud_fetch_to_htmltree(GET => '/users_custom_columns', 200);
+    my $users_customized_column_tree
+        = crud_fetch_to_htmltree(GET => '/users_customized_column', 200);
+    my $users_customized_column2_tree
+        = crud_fetch_to_htmltree(GET => '/users_customized_column2', 200);
+    my $users_customized_column3_tree
+        = crud_fetch_to_htmltree(GET => '/users_customized_column3', 200);
+    my $users_search_tree = crud_fetch_to_htmltree(GET => '/users?q=2', 200);
+    my $users_like_search_tree = crud_fetch_to_htmltree(
+        GET => '/users?searchtype=like&searchfield=username&q=bigpresh',
+        200
+    );
     my $users_by_nosuch_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=NOSUCH&q=2', 500 );
     # search through one join
     my $users_by_group_id_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_group_id&q=1', 200 );
     # search through two joins
     my $users_by_groupname_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_groupname&q=admin', 200 );
+
+    # test suggestions from bigpresh:
+    # Hmm, I'd like to parse the resulting output, and test:
+    #    1) all columns are present as expected
+    #    2) supplied custom columns are present
+    #    3) values calculated in custom columns are as expected
+    #    4) add/edit/delete routes work
+    #    5) searching works
+    #    6) sorting works
+    ###############################################################################
 
     ###############################################################################
     # high-level test definitions
@@ -238,10 +243,10 @@ sub main {
 
     # show captured errors
     my $traps = $trap->read();
-    my @unexpected_errors = grep { $_->{level} eq "error" && !($_->{message} =~ /NOSUCH/) } @$traps;
-    ok( @unexpected_errors == 0, "no errors" ); 
-    for my $error (@unexpected_errors) {
-        diag( "trapped error: $error->{message}" );
+    my @errors = grep { $_->{level} eq "error" } @$traps;
+    ok(@errors == 0, "no errors");
+    for my $error (@errors) {
+        diag("trapped error: $error->{message}");
     }
 
     done_testing();

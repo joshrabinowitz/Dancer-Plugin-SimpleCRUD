@@ -1,6 +1,5 @@
 Revision history for Dancer-Plugin-SimpleCRUD 
 
-=======
 1.14_01 
         [ ENHANCEMENTS ]
         - Add search_columns feature (joshrabinowitz)
