@@ -37,11 +37,18 @@ my $trap = Dancer::Logger::Capture->trap;
 main();
 
 sub main {
+    ## These tests make sure routes give right status codes
+
+    # negative tests
+    response_status_is [ GET => '/nonexistant' ], 404, "GET /nonexistant returns 404";
+    response_status_is [ GET => '/nonexistant' ], 404, "GET /nonexistant returns 404";
+    response_status_is [ GET => '/users?searchfield=NOSUCH&searchtype=e&q=1' ], 400, 
+        "GET {search on NOSUCH=1} returns 400";
+    response_status_is [GET => '/users/add'], 404,
+        "GET /users/add returns 404";
 
     # test basic routes return 200 codes
     response_status_is [GET => '/users'], 200, "GET /users returns 200";
-    response_status_is [GET => '/users/add'], 404,
-        "GET /users/add returns 404";
     response_status_is [GET => '/users_editable/add'], 200,
         "GET /users_editable/add returns 200";
     response_status_is [GET => '/users_editable/edit/1'], 200,
@@ -56,6 +63,7 @@ sub main {
         GET => '/users?searchfield=username&searchtype=like&q=1'
     ], 200, "GET {search on username like '1'} returns 200";
 
+    ## These tests make sure routes give right status codes
     # test html returned from GET $prefix on cruds
     my $users_tree = crud_fetch_to_htmltree(GET => '/users', 200);
     my $users_editable_tree
@@ -75,8 +83,12 @@ sub main {
         GET => '/users?searchtype=like&searchfield=username&q=bigpresh',
         200
     );
+    my $users_by_nosuch_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=NOSUCH&q=2', 400 );
+    # search through one join
+    my $users_by_group_id_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_group_id&q=1', 200 );
+    # search through two joins
+    my $users_by_groupname_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_groupname&q=admin', 200 );
 
-    ###############################################################################
     # test suggestions from bigpresh:
     # Hmm, I'd like to parse the resulting output, and test:
     #    1) all columns are present as expected
@@ -213,6 +225,17 @@ sub main {
         [qw( tbody:0 tr:0 )],
         ["2", "bigpresh", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"],
         "table content, search username like 'bigpresh'"
+    );
+    test_htmltree_contents( 
+        $users_by_group_id_search_tree,  
+        [qw( tbody:0 tr:0 )], 
+        ["1", "sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"  ],               
+        "table content, search users_by_group_id q=1" 
+    );
+    test_htmltree_contents( $users_by_groupname_search_tree,  
+        [qw( tbody:0 tr:0 )], 
+        ["1", "sukria", "{SSHA}LfvBweDp3ieVPRjAUeWikwpaF6NoiTSK"  ],               
+        "table content, search users_by_groupname q=admin" 
     );
 
     # 6) sorting works

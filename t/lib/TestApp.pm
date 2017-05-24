@@ -25,6 +25,18 @@ my @sql = (
     qq/insert into users values (5, 'mousey', '$password')/,
     qq/insert into users values (6, 'mystery2', '$password')/,
     qq/insert into users values (7, 'mystery1', '$password')/,
+
+    qq/create table user_groups (id INTEGER, user_id INTEGER, group_id INTEGER)/,
+    qq/insert into user_groups values (1, 1, 1)/,  # sukria in group 1
+    qq/insert into user_groups values (2, 2, 1)/,  # bigpresh in group 1
+    qq/insert into user_groups values (3, 3, 2)/,  # badger, bodger, and mousey in group 2
+    qq/insert into user_groups values (4, 4, 2)/,
+    qq/insert into user_groups values (5, 6, 2)/,
+                                            # mystery2 and mystery1 not in any group
+                                            #
+    qq/create table groups (id INTEGER, groupname VARCHAR)/,
+    qq/insert into groups values (1, 'admin')/,
+    qq/insert into groups values (2, 'user')/,
 );
 
 database->do($_) for @sql;
@@ -52,4 +64,23 @@ simple_crud( prefix => '/users_customized_column3', record_title=>'A', db_table 
                 custom_columns => [ $username_custom_column, $extra_custom_column, $id_custom_column ],
             );
 
+
+simple_crud( prefix => '/users_by_group', record_title=>'A', db_table => 'users', editable => 0, sortable=>1,
+             search_columns => [    
+                        # this lets you do searches on a column called 'by_group_id' for group_ids
+                { 
+                    name => 'by_group_id', 
+                    joins => [   # join from users -> user_groups
+                        { table => 'user_groups', on_left=>'id', on_right=>'user_id', match_column=>'group_id', table_alias=>'user_groups_1' }  # todo - don't require table_alias
+                    ],
+                },
+                { 
+                    name => 'by_groupname', 
+                    joins => [  # join from users -> user_groups -> groups
+                        { table => 'user_groups', on_left=>'id', on_right=>'user_id', table_alias=>'user_groups_2' },                               # todo - don't require table_alias
+                        { table => 'groups', on_left=>'group_id', on_right=>'id', table_alias=>'groups_1', match_column=>"groupname" },             # todo - don't require table_alias
+                    ],
+                },
+             ],
+         );
 1;

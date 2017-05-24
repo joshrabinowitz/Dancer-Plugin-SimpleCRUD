@@ -1,7 +1,7 @@
 # First, a dead simple object that can be fed a hashref of params from the
 # Dancer params() keyword, and returns then when its param() method is called,
 # so that we can feed it to CGI::FormBuilder:
-package Dancer::Plugin::SimpleCRUD::ParamsObject;
+package Dancer::Plugin::SimpleCRUD::FormBuilderParamsObject;
 
 sub new {
     my ($class, $params) = @_;
@@ -37,9 +37,12 @@ use HTML::Table::FromDatabase;
 use CGI::FormBuilder;
 use HTML::Entities;
 use URI::Escape;
+use List::Util qw(first);
 use List::MoreUtils qw( first_index uniq );
+use Dancer::Plugin::SimpleCRUD::Constants qw( default_searchtype searchtypes );
+use Data::Dump qw(dump);    # TODO - remove
 
-our $VERSION = '1.14';
+our $VERSION = '1.14_01';
 
 =encoding utf8
 
@@ -119,14 +122,14 @@ connection.
         query_auto_focus => 1,
         downloadable => 1,
         foreign_keys => {
-            columnname => {
+           columnname => {
                 table => 'venues',
                 key_column => 'id',
                 label_column => 'name',
             },
         },
-	table_class => 'table table-bordered',
-	paginate_table_class => 'table table-borderless',
+        table_class => 'table table-bordered',
+        paginate_table_class => 'table table-borderless',
         custom_columns => [
             {
                 name => "division_news",
@@ -139,6 +142,17 @@ connection.
                     return "<a href='$search'>$label</a>";
                 },
                 column_class => "column-class",
+            },
+        ],
+        search_columns => [
+            { 
+                name => 'division_region', # search through join across team -> division -> region tables
+                joins => [ 
+                    # where teams.id=division.team_id...
+                    { table => 'division',  on_left => 'id',        on_right => 'team_id', },      
+                    # and division.region_id=region.id and division.name=?
+                    { table => 'region',    on_left => 'region_id', on_right => 'id', match_column='name' },  
+                ],
             },
         ],
         auth => {
@@ -425,6 +439,41 @@ A hashref to specify columns in the table which are foreign keys; for each one,
 the value should be a hashref containing the keys C<table>, C<key_column> and
 C<label_column>.
 
+=item C<search_columns>
+
+An arrayref of hashrefs to specify additional table(s) and columns to allow searching on.
+
+Assuming a 'users' table with columns 'id' and 'username', and a 'user_data' table with columns
+'user_id', 'group_id', 'zip_code', and the following definition:
+
+    ...
+    search_columns => [
+        {
+            name => 'by_group_id', 
+            joins => [ 
+                {   
+                    table=>'user_data',         table_alias=>'user_data_1', 
+                    on_left=>'id',              on_right=>'user_id', 
+                    match_column=>'group_id' 
+                },
+            ],
+        },
+        {
+            name => 'by_zip_code', 
+            joins => [ 
+                { 
+                    table=>'user_data',         table_alias=>'user_data_2', 
+                    on_left=>'id',              on_right=>'user_id', 
+                    match_column=>'zip_code',
+                },
+            ],
+        },
+    ],
+    ...
+
+This will allow searches on 'group_id' and 'zip_code' columns matching each 'users' row.
+You can also add multiple 'joins' hashrefs to join across multiple tables, example pending.
+
 =item C<custom_columns>
 
 An arrayref of hashrefs to specify custom columns to appear in the list view 
@@ -687,7 +736,7 @@ sub _create_view_handler {
     my $values_from_database = $dbh->quick_select($table_name, $where);
 
     # Find out about table columns:
-    my $all_table_columns = _find_columns($dbh, $args->{db_table});
+    my $all_table_columns = _find_columns($dbh, $args->{db_table}, $args->{search_columns});
     my @rows = (['Column Name', 'Value']);
     my $table = HTML::Table->new( -border=>1 );
     $table->addSectionRow('thead', 0, 'Column Name', 'Value');
@@ -731,7 +780,7 @@ sub _create_add_edit_route {
     }
 
     # Find out about table columns:
-    my $all_table_columns = _find_columns($dbh, $args->{db_table});
+    my $all_table_columns = _find_columns($dbh, $args->{db_table}, $args->{search_columns});
     my @editable_columns;
 
     # Now, find out which ones we can edit.
@@ -811,14 +860,14 @@ sub _create_add_edit_route {
     # Only give CGI::FormBuilder our fake CGI object if the form has been
     # POSTed to us already; otherwise, it will ignore default values from
     # the DB, it seems.
-    my $paramsobj
+    my $formbuilder_paramsobj
         = request->{method} eq 'POST'
-        ? Dancer::Plugin::SimpleCRUD::ParamsObject->new({ params() })
+        ? Dancer::Plugin::SimpleCRUD::FormBuilderParamsObject->new({ params() })
         : undef;
 
     my $form = CGI::FormBuilder->new(
         fields   => \@editable_columns,
-        params   => $paramsobj,
+        params   => $formbuilder_paramsobj,
         values   => $values_from_database,
         validate => $validation,
         method   => 'post',
@@ -979,11 +1028,12 @@ sub _create_add_edit_route {
     }
 }
 
+# this function is too long.
 sub _create_list_handler {
     my ($args, $table_name, $key_column) = @_;
 
     my $dbh = database($args->{db_connection_name});
-    my $columns = _find_columns($dbh, $table_name);
+    my $columns = _find_columns($dbh, $table_name); # $args->{search_columns});
 
     my $display_columns = $args->{'display_columns'};
 
@@ -1007,6 +1057,8 @@ sub _create_list_handler {
     }
 
     my $searchfield = params->{searchfield} || $key_column;
+    # add the search columns to the list of columns in the option menu
+    my @searchfields = (@$columns, map { my %h; $h{COLUMN_NAME} = $_->{name}; \%h } @{ $args->{search_columns} } );
     my $searchfield_options = join(
         "\n",
         map {
@@ -1019,23 +1071,10 @@ sub _create_list_handler {
                 ? "selected"
                 : "";
             "<option $sel value='$_->{COLUMN_NAME}'>$friendly_name</option>"
-            } @$columns
+            } @searchfields
     );
-    my $default_searchtype = "e";
-    my @searchtypes = (
-        [ e   => { name => "Equals",           cmp => "=" } ],
-        [ c   => { name => "Contains",         cmp => "like" } ],
-        [ b   => { name => "Begins With",      cmp => "like" } ],
-        [ ne  => { name => "Does Not Equal",   cmp => "!=" } ],
-        [ nc  => { name => "Does Not Contain", cmp => "not like" } ],
-
-        [ lt  => { name => "Less Than",                cmp => "<" } ],
-        [ lte => { name => "Less Than or Equal To",    cmp => "<=" } ],
-        [ gt  => { name => "Greater Than",             cmp => ">" } ],
-        [ gte => { name => "Greater Than or Equal To", cmp => ">=" } ],
-
-        [ like => { name => "Like", cmp => "LIKE" } ],
-    );
+    my $default_searchtype = default_searchtype();
+    my @searchtypes = searchtypes();
     my $searchtype_options = join( "\n",
         map { 
             my ($search_code, $hashref) = @$_;
@@ -1049,6 +1088,8 @@ sub _create_list_handler {
     my $order_by_direction = params->{'d'} || "";
     my $q                   = _defined_or_empty(params->{'q'});
     my $display_q           = encode_entities( $q );
+
+    # start assembling the html
     my $html               = <<"SEARCHFORM";
  <p><form name="searchform" method="get">
      Field:  <select name="searchfield">$searchfield_options</select> &nbsp;&nbsp;
@@ -1149,6 +1190,8 @@ SEARCHFORM
         = $args->{editable}
         ? ", $table_name.$key_column AS actions"
         : '';
+
+    #start assembling the sql
     my $query = "SELECT $col_list $add_actions FROM $table_name";
     my @binds;
 
@@ -1173,6 +1216,23 @@ SEARCHFORM
         }
     }
 
+    my $st = params->{searchtype} || default_searchtype();
+    my (@search_wheres, @search_binds); # where clauses for searches, and the bind variable for each
+
+    # If we have search_column relationship info, we need to join on those tables too:
+    if (my $search_columns = $args->{search_columns}) {
+        for my $search_column ( @$search_columns ) {
+            my $left_table_alias = $table_name;         # the first table is unaliased
+            for my $join ( @{$search_column->{joins} } ) {
+                # iterate through the join tables from a -> b -> c
+                my $table_alias = $join->{table_alias};
+                $query .= " LEFT JOIN $join->{table} as $table_alias ON $left_table_alias.$join->{on_left} = $table_alias.$join->{on_right}";
+                $left_table_alias = $join->{table_alias};
+            }
+        }
+    }
+
+
     # If we have a query or a where_filter, we need to assemble a WHERE clause...
     my $where_filter = _get_where_filter_from_args($args);
     if (length $q || $where_filter) {
@@ -1182,30 +1242,38 @@ SEARCHFORM
         my ($where_filter_sql, @where_filter_binds)
             = $dbh->generate_where_clauses($where_filter);
 
-        my (@search_wheres, @search_binds);
         if (length $q) {    # this nested code is all for queries in $q
+
+            my $match_table_name = $table_name;
+            #look for columns with matching names
             my ($column_data)
                 = grep { lc $_->{COLUMN_NAME} eq lc $searchfield }
                 @{$columns};
-            debug(
-                "Searching on $column_data->{COLUMN_NAME} which is a "
-                . "$column_data->{TYPE_NAME}"
-            );
-            my $st = params->{searchtype} || $default_searchtype;
+
+            ## look for matching column name in search_columns
+            if (my $search_column = first { lc $_->{name} eq lc $searchfield } @{ $args->{search_columns} } ) {
+                my $search_join = first { $_->{match_column} } @{ $search_column->{joins} };    # the first join with a match_column
+                if ($search_join) {
+                    $match_table_name = $search_join->{table_alias};    # TODO - make aliases automatic
+                    $column_data->{COLUMN_NAME} = $search_join->{match_column};
+                    $column_data->{TYPE_NAME} = "VARCHAR";  # TODO - figure out correct type and comparitor?
+                } else {
+                    warn "$0: can't find match_column from " . dump($search_column->{joins}) . " for $searchfield\n";   # TODO - remove
+                }
+            }
 
             if ($column_data) {
-                my $search_value = $q;
-                if ($st eq 'c' || $st eq 'nc') {    # contains or does not contain
-                    $search_value = '%' . $search_value . '%';
-                } elsif ($st eq 'b') {              # begins with
-                    $search_value = $search_value . '%';
-                }
+                debug(
+                    "Searching on $column_data->{COLUMN_NAME} which is a "
+                    . "$column_data->{TYPE_NAME}"
+                );
+                my $search_value = _search_value_from_query_and_searchtype( $q, $st );
 
-                my ($searchtype_row) = grep { $_->[0] eq $st } @searchtypes;
+                my ($searchtype_row) = grep { $_->[0] eq $st } searchtypes();
                 my $cmp = $searchtype_row->[1]->{cmp} || '=';
                 push(@search_wheres,
-                    "$table_name."
-                    . $dbh->quote_identifier($searchfield)
+                    "$match_table_name."
+                    . $dbh->quote_identifier($column_data->{COLUMN_NAME})
                     . " $cmp ?" );
                 push(@search_binds, $search_value);
 
@@ -1217,7 +1285,24 @@ SEARCHFORM
                 );
                 $html .= sprintf '&mdash;<a href="%s">Reset search</a></p>',
                     _external_url($args->{dancer_prefix}, $args->{prefix});
+            #} 
+            ## now look for search_column which we don't display but are searchable
+            #elsif ($args->{search_columns}) {
+            #    my $search_column = first { lc( $_->{name} ) eq lc $searchfield} @{$args->{search_columns}};
+            #    die "$0: can't find column or search_column to perform query on for searchfield: $searchfield" unless $search_column;
+            #    if ($search_column) {
+            #        for my $join ( @{$search_column->{joins} } ) {
+            #            if (my $match_column = $join->{match}) {
+            #                my $search_value = _search_value_from_query_and_searchtype( $q, $st );
+            #                push(@search_wheres, "$join->{table_alias}.$match_column=?"); # TODO - support cmp?
+            #                push(@search_binds, $search_value);
+            #            }
+            #        }
+            #    }
+            } else {
+                send_error "Can't find column to search on for searchfield: $searchfield", 400; # 400 is bad request
             }
+
         }
         # add the 'where' clauses to $query and the binds to @binds
         $query .= " where " . join( " AND ", grep { length $_ } ($where_filter_sql, @search_wheres));
@@ -1225,18 +1310,20 @@ SEARCHFORM
     }
 
     if ($args->{downloadable}) {
-        my $qt   = uri_escape($q);
+
+        my $qt   = uri_escape($q);  # DUP CODE
         my $sf   = uri_escape($searchfield);
-        my $st   = uri_escape(params->{searchtype} || $default_searchtype);
+        my $st   = uri_escape(params->{searchtype} || default_searchtype());
         my $o    = uri_escape(params->{'o'}         || "");
         my $d    = uri_escape(params->{'d'}         || "");
         my $page = uri_escape(params->{'p'}         || 0);
+        $page = 0 unless $page =~ /^\d+$/;
 
-        my @formats = qw/csv tabular json xml/;
 
         my $url = _external_url($args->{dancer_prefix}, $args->{prefix})
             . "?o=$o&d=$d&q=$qt&searchfield=$sf&searchtype=$st&p=$page";
 
+        my @formats = qw/csv tabular json xml/;
         $html
             .= "<p>Download as: "
             . join(", ", map { "<a href=\"$url&format=$_\">$_</a>" } @formats)
@@ -1245,9 +1332,9 @@ SEARCHFORM
 
     my %columns_sort_options;
     if ($args->{sortable}) {
-        my $qt              = uri_escape($q);
+        my $qt              = uri_escape($q);   # PARTIAL DUP CODE
         my $sf              = uri_escape($searchfield);
-        my $st              = uri_escape(params->{searchtype} || $default_searchtype);
+        my $st              = uri_escape(params->{searchtype} || default_searchtype());
         my $order_by_column = uri_escape(params->{'o'})        || $key_column;
 
         # Invalid column name ? discard it
@@ -1280,7 +1367,8 @@ SEARCHFORM
                 $direction_char = ($direction eq "asc") ? "&uarr;" : "&darr;";
             }
             my $url = _external_url($args->{dancer_prefix}, $args->{prefix})
-                . "?o=$col_name&d=$direction&q=$q&searchfield=$sf&searchtype=$st";
+                . "?o=$col_name&d=$direction&q=$q&searchfield=$sf&searchtype=$st";  # DUP CODE
+
             $col_name =>
                 "<a href=\"$url\">$friendly_name&nbsp;$direction_char</a>";
         } @all_cols;
@@ -1315,12 +1403,13 @@ SEARCHFORM
             . " $order_by_direction ";
     }
 
+
     if ($args->{paginate} && $args->{paginate} =~ /^\d+$/) {
         my $page_size = $args->{paginate};
 
-        my $qt   = uri_escape($q);
+        my $qt   = uri_escape($q);          # DUP CODE
         my $sf   = uri_escape($searchfield);
-        my $st   = uri_escape(params->{searchtype} || $default_searchtype);
+        my $st   = uri_escape(params->{searchtype} || default_searchtype());
         my $o    = uri_escape(params->{'o'}         || "");
         my $d    = uri_escape(params->{'d'}         || "");
         my $page = uri_escape(params->{'p'}         || 0);
@@ -1332,7 +1421,7 @@ SEARCHFORM
         my $url = _external_url($args->{dancer_prefix}, $args->{prefix})
             . "?o=$o&d=$d&q=$qt&searchfield=$sf&searchtype=$st";
         $html .= "<p>";
-	$html .= "<table class=\"$paginate_table_class\"><tr>";
+        $html .= "<table class=\"$paginate_table_class\"><tr>";
 
         if ($page > 0) {
             $html
@@ -1356,7 +1445,9 @@ SEARCHFORM
         $query .= " LIMIT $limit OFFSET $offset ";
     }
 
+    # At this point we have the SQL. Run the query and  create the rest of the HTML, or give the file for download
     debug("Running query: $query");
+    #warn("Running query: $query (@binds)");
     my $sth = $dbh->prepare($query);
     $sth->execute(@binds)
         or die "Failed to query for records in $table_name - "
@@ -1416,15 +1507,18 @@ SEARCHFORM
     );
 
     # apply custom columns' column_classes as specified. Can this be done via HTML::Table::FromDatabase->new() above?
-    my @all_column_names = ( (map { $_->{COLUMN_NAME} } @$columns), (map { $_->{name} } @{$args->{custom_columns}}) );
+    my @all_column_names = uniq ( (map { $_->{COLUMN_NAME} } @$columns), 
+                                  (map { $_->{name} } @{$args->{custom_columns}}), );
+                                  #(map { $_->{name} } @{$args->{search_columns}}) );
     for my $custom_col_spec (@{ $args->{custom_columns} || [] } ) {
         if (my $column_class = $custom_col_spec->{column_class}) {
-            my $first_index = first_index { $_ eq $custom_col_spec->{name} } uniq @all_column_names;
+            my $first_index = first_index { $_ eq $custom_col_spec->{name} } @all_column_names;
             die "Cannot find index of column '$custom_col_spec->{name}'" if ($first_index == -1);
             $table->setColClass( 1 + $first_index, $column_class );
         }
     }
 
+    # fetch the rows and create the HTML
     $html .= $table->getTable || '';
 
     if ($args->{addable} && _has_permission('edit', $args)) {
@@ -1549,8 +1643,28 @@ sub _return_downloadable_query {
 # mysql_is_pri_key
 # mysql_values (for an enum, ["One", "Two", "Three"]
 sub _find_columns {
-    my ($dbh, $table_name) = @_;
-    my $sth = $dbh->column_info(undef, undef, $table_name, undef)
+    my ($dbh, $table_name, $search_columns) = @_;
+    my @columns = _get_column_info( $dbh, $table_name );
+
+    # fetch info about the search columns
+    for my $search_column (@{$search_columns}) {
+        for my $join ( grep { $_->{match_column} } @{ $search_column->{joins}}) {
+            warn "test: looking for $join->{match_column}\n";
+            push( @columns, _get_column_info( $dbh, $join->{table}, $join->{match_column} ) );
+        }
+    }
+
+    #if ($search_columns) { die "TESTING: COLUMNS: " . dump( \@columns ) . "\n"; }
+    return [@columns];
+}
+
+# if $column if passed, returns info about that column in that table
+# if no $column, returns info about all the columns in that table
+sub _get_column_info {
+    my ($dbh, $table_name, $column) = @_;
+
+    # $sth = $dbh->column_info( $catalog, $schema, $table, $column );
+    my $sth = $dbh->column_info(undef, undef, $table_name, $column)
         or die "Failed to get column info for $table_name - " . $dbh->errstr;
     my @columns;
     while (my $col = $sth->fetchrow_hashref) {
@@ -1562,8 +1676,8 @@ sub _find_columns {
     die "no columns for table [$table_name]--are you sure this table exists in the database [$dbh->{Driver}->{Name}:$dbh->{Name}]?" unless @columns;
 
     # Return the columns, sorted by their position in the table:
-    return [sort { $a->{ORDINAL_POSITION} <=> $b->{ORDINAL_POSITION} }
-            @columns];
+    return sort { $a->{ORDINAL_POSITION} <=> $b->{ORDINAL_POSITION} }
+            @columns;
 }
 
 # Given parts of an URL, assemble them together, prepending the current prefix
@@ -1658,6 +1772,16 @@ sub _has_permission {
 sub _defined_or_empty {
     my $v = shift;
     return defined($v) ? $v : "";
+}
+sub _search_value_from_query_and_searchtype {
+    my ($query, $searchtype) = @_;
+    my $search_value = $query;
+    if ($searchtype eq 'c' || $searchtype eq 'nc') {    # contains or does not contain
+        $search_value = '%' . $search_value . '%';
+    } elsif ($searchtype eq 'b') {              # begins with
+        $search_value = $search_value . '%';
+    }
+    return $search_value;
 }
 
 # where_filter  "if it's a coderef, call it and check it gave us a hashref to
