@@ -42,8 +42,8 @@ sub main {
     # negative tests
     response_status_is [ GET => '/nonexistant' ], 404, "GET /nonexistant returns 404";
     response_status_is [ GET => '/nonexistant' ], 404, "GET /nonexistant returns 404";
-    response_status_is [ GET => '/users?searchfield=NOSUCH&searchtype=e&q=1' ], 500, 
-        "GET {search on NOSUCH=1} returns 500";
+    response_status_is [ GET => '/users?searchfield=NOSUCH&searchtype=e&q=1' ], 400, 
+        "GET {search on NOSUCH=1} returns 400";
     response_status_is [GET => '/users/add'], 404,
         "GET /users/add returns 404";
 
@@ -83,7 +83,7 @@ sub main {
         GET => '/users?searchtype=like&searchfield=username&q=bigpresh',
         200
     );
-    my $users_by_nosuch_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=NOSUCH&q=2', 500 );
+    my $users_by_nosuch_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=NOSUCH&q=2', 400 );
     # search through one join
     my $users_by_group_id_search_tree = crud_fetch_to_htmltree( GET => '/users_by_group?searchtype=e&searchfield=by_group_id&q=1', 200 );
     # search through two joins

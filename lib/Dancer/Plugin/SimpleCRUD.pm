@@ -1300,7 +1300,7 @@ SEARCHFORM
             #        }
             #    }
             } else {
-                die "Can't find column to search on for searchfield: $searchfield";
+                send_error "Can't find column to search on for searchfield: $searchfield", 400; # 400 is bad request
             }
 
         }
